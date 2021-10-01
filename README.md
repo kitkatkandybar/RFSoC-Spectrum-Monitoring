@@ -1,6 +1,6 @@
 # RFSoC-Spectrum-Monitoring
 
-##Team Members:
+## Team Members:
 Yana Galina
 Jaime Mohedano Aragon 
 Kakit Wong
