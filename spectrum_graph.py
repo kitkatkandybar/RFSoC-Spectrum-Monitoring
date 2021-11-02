@@ -49,7 +49,8 @@ class Spectrum():
         self.ddc_centre_frequency = 0
         self.data_windowsize      = data_windowsize
         self.post_process         = 'none'
-        self.enable_updates       = False
+        # self.enable_updates       = False
+        self.enable_updates       = True
         self.display_min          = False
         self.display_max          = False
         self.display_ddc_plan     = []

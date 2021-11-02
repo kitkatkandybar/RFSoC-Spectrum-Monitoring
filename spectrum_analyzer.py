@@ -14,16 +14,21 @@ class SpectrumAnalyzer():
                  decimation_factor = 2,
                  nyquist_stopband = 1,
                  plot_width = 800,
-                 plot_height = 400):
+                 plot_height = 400,
+                 number_samples=None):
         self._spectrum_fftselector = 6
 
         self._sample_frequency = int(sample_frequency)
-        self._number_samples = int(2**(self._spectrum_fftselector+6))
+        self._number_samples   = int(2**(self._spectrum_fftselector+6))
+        if number_samples is None:
+          self._number_samples   = int(2**(self._spectrum_fftselector+6))
+        else:
+          self._number_samples = number_samples
         self._centre_frequency = centre_frequency
         self._nyquist_stopband = nyquist_stopband
-        self._width = plot_width
-        self._height = plot_height
-
+        self._width            = plot_width
+        self._height           = plot_height
+ 
 
 
         self.spec = spectrum_graph.Spectrum(
