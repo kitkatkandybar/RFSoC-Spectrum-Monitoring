@@ -86,6 +86,11 @@ def spectrum_process(
         pdata, freq = matplotlib.mlab.psd(
             data, NFFT=bins, Fs=sfreq, detrend=dfn, window=win, scale_by_freq=False
         )
+        print(f'freq: {freq + cfreq}')
+        print(f"bins: {bins}, sfreq: {sfreq}, dfn: {dfn}, win: {win}")
+        
+        print(f"max of data: {max(pdata)}")
+
         return pdata, freq
         # yield spectrum_plot(pdata, freq, cfreq, toffset, log_scale, zscale, title, clr)
 
@@ -109,10 +114,10 @@ def spectrum_plot(data, freq, cfreq, toffset, log_scale, zscale, title, clr):
     if zscale_low == 0 and zscale_high == 0:
         pss_ma = np.ma.masked_invalid(pss)
         if log_scale:
-            zscale_low = np.median(pss_ma.min()) - 3.0
+            zscale_low  = np.median(pss_ma.min()) - 3.0
             zscale_high = np.median(pss_ma.max()) + 3.0
         else:
-            zscale_low = np.median(pss_ma.min())
+            zscale_low  = np.median(pss_ma.min())
             zscale_high = np.median(pss_ma.max())
 
     fig = plt.figure()
@@ -237,7 +242,7 @@ def read_digital_rf_data(input_files, plot_file=None, plot_type="spectrum", chan
             "b",
         )
         # print(f"fig_gen: {fig_gen}")
-        return {'data': p_data, 'freq': freq, 'cfreq': cfreq}
+        return {'data': p_data, 'freq': freq, 'cfreq': cfreq, 'sfreq': sfreq}
 
     elif plot_type == "specgram":
         fig_gen = specgram_process(

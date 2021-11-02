@@ -16,7 +16,8 @@ class Spectrum():
                  display_mode=0,
                  data_windowsize=16,
                  spectrum_mode=True,
-                 decimation_factor=2):
+                 decimation_factor=2,
+                 x_data=None):
     
         self._y_data = plot_data
         self._y_data_current = plot_data
@@ -383,7 +384,9 @@ class Spectrum():
             self._min_indices = self._y_data.argsort()[:self._number_min_indices]
         
     def _apply_post_process(self, data):
-        fdata = np.fft.fftshift(data)
+        fdata = data
+        # THIS LINE WILL MESS UP THE PROCESSING IF USED WITH DIGITAL RF DATA
+        # fdata = np.fft.fftshift(data) 
         if self.post_process == 'average':
             self._data_window = np.roll(self._data_window, shift=1, axis=0)
             self._data_window[0, :] = fdata
@@ -478,3 +481,60 @@ class Spectrum():
         
     def get_plot(self):
         return self._plot
+
+
+    def __str__(self):
+        s = f"y_data: {self.data}\n" + \
+            f"sample_frequency: {self._sample_frequency }\n" + \
+            f"number_samples: {self.number_samples}\n" + \
+            f"decimation_factor: {self.decimation_factor}\n" + \
+            f"number_samples: {self.number_samples}\n" + \
+            f"centre_frequency: {self.centre_frequency}\n" + \
+            f"upper limit: {self._upper_limit}\n" + \
+            f"lower limit: {self._lower_limit}\n" + \
+            f"xlabel: {self.xlabel}\n" + \
+            f"ylabel: {self.ylabel}\n" + \
+            f"range: {self._range}\n" + \
+            f"yrange: {self.yrange}\n" + \
+            f"post_process: {self.post_process}\n" + \
+            f"data_windowsize: {self.data_windowsize}\n"
+
+        return s
+
+        # self._y_data = plot_data
+        # self._y_data_current = plot_data
+        # self._sample_frequency = sample_frequency
+        # self._number_samples = number_samples
+        # self._decimation_factor = decimation_factor
+        # self._centre_frequency = centre_frequency
+        # self._rbw = (self._sample_frequency/self._decimation_factor) \
+        #     /self._number_samples
+        # self._upper_limit = (self._sample_frequency/self._decimation_factor)/2
+        # self._lower_limit = -(self._sample_frequency/self._decimation_factor)/2
+        # self._upper_index = self._number_samples-1
+        # self._lower_index = 0
+        # self._xlabel = xlabel
+        # self._ylabel = ylabel
+        # self._x_data = np.arange(self._lower_limit,
+        #                          self._upper_limit,
+        #                          self._rbw) + self._centre_frequency
+        # self._range               = (min(self._x_data), max(self._x_data))
+        # self._yrange              = [-150, 0]
+        # self._display_mode        = display_mode
+        # self._spectrum_mode       = spectrum_mode
+        # self._nyquist_stopband    = nyquist_stopband
+        # self._data_window         = np.empty(1)
+        # self._min_indices         = [0]
+        # self._max_indices         = [0]
+        # self._number_min_indices  = 1
+        # self._number_max_indices  = 1
+        # self._update_ddc_counter  = 0
+        # self.ddc_centre_frequency = 0
+        # self.data_windowsize      = data_windowsize
+        # self.post_process         = 'none'
+        # # self.enable_updates       = False
+        # self.enable_updates       = True
+        # self.display_min          = False
+        # self.display_max          = False
+        # self.display_ddc_plan     = []
+        

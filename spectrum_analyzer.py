@@ -34,7 +34,7 @@ class SpectrumAnalyzer():
         self.spec = spectrum_graph.Spectrum(
               plot_data=np.zeros((self._number_samples,), dtype=np.single),
               sample_frequency=self._sample_frequency,
-              decimation_factor=2,
+              decimation_factor=1, # TODO what should this be
               number_samples=self._number_samples,
               centre_frequency=self._centre_frequency,
               nyquist_stopband=self._nyquist_stopband,
