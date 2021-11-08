@@ -75,6 +75,12 @@ def spectrum_process(
 
             pblock /= integration
 
+            if log_scale:
+        #        pss = 10.0*np.log10(data / np.max(data))
+                pblock = 10.0 * np.log10(pblock + 1e-12)
+
+            yield pblock, freq
+
             # yield spectrum_plot(
             #     pblock, freq, cfreq, block_toffset, log_scale, zscale, title, clr
             # )
@@ -91,7 +97,11 @@ def spectrum_process(
         
         print(f"max of data: {max(pdata)}")
 
-        return pdata, freq
+        if log_scale:
+        #        pss = 10.0*np.log10(data / np.max(data))
+            pdata = 10.0 * np.log10(pdata + 1e-12)
+
+        yield pdata, freq
         # yield spectrum_plot(pdata, freq, cfreq, toffset, log_scale, zscale, title, clr)
 
 
@@ -174,7 +184,7 @@ def read_digital_rf_data(input_files, plot_file=None, plot_type="spectrum", chan
             sstart = atime + int(toffset)
             dlen   = stop_sample - start_sample
 
-            print(f"sstart: {sstart}, dlen: {dlen}")
+            print(f"sstart: {sstart}, dlen: {dlen}, samps per second: {sfreq_ld}")
 
             if cfreq is None:
                 # read center frequency from metadata
@@ -227,7 +237,8 @@ def read_digital_rf_data(input_files, plot_file=None, plot_type="spectrum", chan
     if plot_type == "spectrum":
         print('boop')
         # fig_gen = spectrum_process(
-        p_data, freq = spectrum_process(
+        data = []
+        gen = spectrum_process(
             d,
             sfreq,
             cfreq,
@@ -241,8 +252,10 @@ def read_digital_rf_data(input_files, plot_file=None, plot_type="spectrum", chan
             title,
             "b",
         )
+        for g in gen:
+            data.append({'data': g[0], 'freq': g[1], 'cfreq': cfreq, 'sfreq': sfreq})
         # print(f"fig_gen: {fig_gen}")
-        return {'data': p_data, 'freq': freq, 'cfreq': cfreq, 'sfreq': sfreq}
+        return data
 
     elif plot_type == "specgram":
         fig_gen = specgram_process(
