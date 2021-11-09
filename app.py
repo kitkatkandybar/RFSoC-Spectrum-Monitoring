@@ -10,7 +10,6 @@ import numpy as np
 
 from spectrum_analyzer import SpectrumAnalyzer
 from digital_rf_utils import read_digital_rf_data
-from receiver_frontend import * 
 
 
 
@@ -39,7 +38,7 @@ radio = html.Div([
                         "value": 'off',
                     },
                 ],
-                value='off',
+                value='on',
                 id=f"radio-log-scale",
                 labelStyle={"verticalAlign": "middle"},
                 className="plot-display-radio-items",
@@ -91,12 +90,9 @@ print(sa.spec)
 
 
 app.layout = html.Div(children=[
-    html.H1(children='Hello Dash'),
-
-    html.Div(children='''
-        Dash: A web application framework for your data.
-    '''),
-    html.Button('Reset', id='submit-val', n_clicks=0),
+    html.H1(children='Digital RF Dashboard'),
+    html.Button('Reset', id='reset-val', n_clicks=0),
+    html.Button('Play', id='play-val', n_clicks=0),
     radio,
     dcc.Graph(
         id='spectrum-graph',
@@ -106,7 +102,8 @@ app.layout = html.Div(children=[
             id='interval-component',
             interval=1*100, # in milliseconds
             n_intervals=0,
-            max_intervals=len(spec_datas)
+            max_intervals=len(spec_datas),
+            disabled=True,
         ),
     dcc.Graph(
         id='specgram-graph',
@@ -119,9 +116,10 @@ app.layout = html.Div(children=[
 
 @app.callback(
     dash.Output('interval-component', 'n_intervals'),
-    dash.Input('submit-val', 'n_clicks'),
+    dash.Input('reset-val', 'n_clicks'),
+    dash.Input('play-val', 'n_clicks'),
 )
-def update_output(n_clicks):
+def update_interval(reset_clicks, play_clicks):
     return 0
 
 @app.callback(dash.Output('specgram-graph', 'figure'),
