@@ -117,10 +117,18 @@ app.layout = html.Div(children=[
 @app.callback(
     dash.Output('interval-component', 'n_intervals'),
     dash.Input('reset-val', 'n_clicks'),
+)
+def update_interval(reset_clicks):
+    return 0
+
+@app.callback(
+    dash.Output('interval-component', 'disabled'),
     dash.Input('play-val', 'n_clicks'),
 )
-def update_interval(reset_clicks, play_clicks):
-    return 0
+def update_interval(play_clicks):
+    if play_clicks > 0:
+        return False
+    return True
 
 @app.callback(dash.Output('specgram-graph', 'figure'),
               dash.Input('interval-component', 'n_intervals'))
