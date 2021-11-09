@@ -4,3 +4,13 @@
 ---
 
 ### Table of Contents
+
+
+
+## Getting starting
+
+Install anaconda https://anaconda.org/
+
+conda create --name rfsoc --file requirements.txt python=3.9
+
+conda activate rfsoc

@@ -50,7 +50,7 @@ class Spectrum():
         self._update_ddc_counter  = 0
         self.ddc_centre_frequency = 0
         self.data_windowsize      = data_windowsize
-        self.post_process         = 'none'
+        self.post_process         = 'max' #'none'
         # self.enable_updates       = False
         self.enable_updates       = True
         self.display_min          = False
@@ -76,7 +76,7 @@ class Spectrum():
             'yaxis' : {
                 'title' : self._ylabel,
                 'range' : self._yrange,
-                'autorange' : True
+                'autorange' : False
             },
             'margin' : {
                 't':25,

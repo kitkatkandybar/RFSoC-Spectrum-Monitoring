@@ -17,7 +17,7 @@ class SpectrumAnalyzer():
                  plot_width = 800,
                  plot_height = 400,
                  number_samples=None,
-                 log_scale=False):
+                 log_scale=True):
         self._spectrum_fftselector = 6
 
         self._sample_frequency = int(sample_frequency)
@@ -48,7 +48,7 @@ class SpectrumAnalyzer():
               plot_height=self._height,
               display_mode=0,
               spectrum_mode=True,
-              log_scale=False)
+              log_scale=log_scale)
 
      
         self.spectrogram = Spectrogram(sample_frequency=self._sample_frequency,
