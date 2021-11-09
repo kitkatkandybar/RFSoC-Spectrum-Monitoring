@@ -17,7 +17,8 @@ class Spectrum():
                  data_windowsize=16,
                  spectrum_mode=True,
                  decimation_factor=2,
-                 x_data=None):
+                 x_data=None,
+                 log_scale=False):
     
         self._y_data = plot_data
         self._y_data_current = plot_data
@@ -55,6 +56,7 @@ class Spectrum():
         self.display_min          = False
         self.display_max          = False
         self.display_ddc_plan     = []
+        self._log_scale           = log_scale
         
         
         if (np.ceil(self._centre_frequency/(self._sample_frequency/2)) % 2) == 0:
@@ -351,6 +353,19 @@ class Spectrum():
         self._plot.layout.height = height
         
     @property
+    def log_scale(self):
+        return self._log_scale
+    
+    @log_scale.setter
+    def log_scale(self, log_scale):
+        if log_scale and not self._log_scale:
+            self.ylabel += "(dB)"
+        elif not log_scale and self.log_scale:
+            self.ylabel = self.ylabel[:-4]
+
+        self._log_scale = log_scale
+
+    @property
     def number_samples(self):
         return self._number_samples
     
@@ -405,6 +420,10 @@ class Spectrum():
             fdata = np.minimum(self._y_data_current, fdata)
         else:
             pass
+
+        if self._log_scale:
+            fdata= 10.0 * np.log10(fdata + 1e-12)
+
         return fdata
         
     def _clear_plot(self):

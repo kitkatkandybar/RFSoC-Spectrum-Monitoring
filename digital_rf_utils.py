@@ -75,9 +75,9 @@ def spectrum_process(
 
             pblock /= integration
 
-            if log_scale:
-        #        pss = 10.0*np.log10(data / np.max(data))
-                pblock = 10.0 * np.log10(pblock + 1e-12)
+        #     if log_scale:
+        # #        pss = 10.0*np.log10(data / np.max(data))
+        #         pblock = 10.0 * np.log10(pblock + 1e-12)
 
             yield pblock, freq
 
@@ -97,9 +97,9 @@ def spectrum_process(
         
         print(f"max of data: {max(pdata)}")
 
-        if log_scale:
-        #        pss = 10.0*np.log10(data / np.max(data))
-            pdata = 10.0 * np.log10(pdata + 1e-12)
+        # if log_scale:
+        # #        pss = 10.0*np.log10(data / np.max(data))
+        #     pdata = 10.0 * np.log10(pdata + 1e-12)
 
         yield pdata, freq
         # yield spectrum_plot(pdata, freq, cfreq, toffset, log_scale, zscale, title, clr)

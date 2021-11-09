@@ -17,15 +17,44 @@ from receiver_frontend import *
 
 app = dash.Dash(__name__)
 
-# assume you have a "long-form" data frame
-# see https://plotly.com/python/px-arguments/ for more options
-df = pd.DataFrame({
-    "Fruit": ["Apples", "Oranges", "Bananas", "Apples", "Oranges", "Bananas"],
-    "Amount": [4, 1, 2, 2, 4, 5],
-    "City": ["SF", "SF", "SF", "Montreal", "Montreal", "Montreal"]
-})
 
-fig = px.bar(df, x="Fruit", y="Amount", color="City", barmode="group")
+
+radio = html.Div([
+
+        html.P(
+                "Log Scale:",
+                style={"font-weight": "bold", "margin-bottom": "0px"},
+                className="plot-display-text",
+            ),
+         html.Div(
+        [
+            dcc.RadioItems(
+                options=[
+                    {
+                        "label": "On",
+                        "value": 'on',
+                    },
+                    {
+                        "label": "Off",
+                        "value": 'off',
+                    },
+                ],
+                value='off',
+                id=f"radio-log-scale",
+                labelStyle={"verticalAlign": "middle"},
+                className="plot-display-radio-items",
+            )
+        ],
+        className="radio-item-div",
+    )
+])
+
+
+
+config = {
+    "log_scale": False,
+}
+
 
 # drf_dir = "C:/Users/yanag/openradar/openradar_antennas_wb_hf/"
 drf_dir = "C:/Users/yanag/openradar/openradar_antennas_wb_uhf/"
@@ -68,6 +97,7 @@ app.layout = html.Div(children=[
         Dash: A web application framework for your data.
     '''),
     html.Button('Reset', id='submit-val', n_clicks=0),
+    radio,
     dcc.Graph(
         id='spectrum-graph',
         figure=sa.plot
@@ -82,6 +112,7 @@ app.layout = html.Div(children=[
         id='specgram-graph',
         figure=sa.spectrogram.get_plot()
     ),
+    
 ])
 
 
@@ -92,15 +123,6 @@ app.layout = html.Div(children=[
 )
 def update_output(n_clicks):
     return 0
-
-@app.callback(dash.Output('spectrum-graph', 'figure'),
-              dash.Input('interval-component', 'n_intervals'))
-def update_metrics(n):
-    print('data boop')
-    if n < len(spec_datas):
-        sa.spec.data = spec_datas[n]['data']
-        sa.spectrogram.data = spec_datas[n]['data']
-    return sa.plot
 
 @app.callback(dash.Output('specgram-graph', 'figure'),
               dash.Input('interval-component', 'n_intervals'))
@@ -115,6 +137,30 @@ def update_spec_metrics(n):
         sa.spectrogram.zmin = zscale_low
         sa.spectrogram.zmax = zscale_high
     return sa.spectrogram.get_plot()
+
+
+
+@app.callback(dash.Output('spectrum-graph', 'figure'),
+              dash.Input('interval-component', 'n_intervals'),
+              dash.Input("radio-log-scale", "value"))
+def update_spectrum_graph(n, log_scale):
+    ctx = dash.callback_context
+    if not ctx.triggered:
+        return sa.plot
+
+    prop_id = ctx.triggered[0]['prop_id'].split('.')[0]
+    if prop_id == "interval-component":
+        if n < len(spec_datas):
+            sa.spec.data        = spec_datas[n]['data']
+            sa.spectrogram.data = spec_datas[n]['data']
+
+    else:
+        if log_scale == 'on':
+            sa.spec.log_scale = True
+        else:
+            sa.spec.log_scale = False
+    return sa.plot
+
 
 
 if __name__ == '__main__':
