@@ -104,7 +104,8 @@ class Spectrum():
             go.Scatter(
                 x = self._x_data,
                 y = np.zeros(self._number_samples) - 300,
-                name = '',
+                # y = self._y_data,
+                name = '???',
                 fill = 'tonexty',
                 fillcolor = 'rgba(128, 128, 128, 0.5)'
             )
@@ -290,6 +291,7 @@ class Spectrum():
     @data.setter
     def data(self, data):
         if self.enable_updates:
+            print("updating data")
             data = self._apply_post_process(data)
             self._y_data_current = data
             self._y_data = self._y_data_current[self._lower_index:self._upper_index]
@@ -297,10 +299,12 @@ class Spectrum():
             self._apply_analysis()
             self._display_analysis()
             if self._update_ddc_counter > 8:
-                self.update_ddc_amplitude()
+                # self.update_ddc_amplitude()
                 self._update_ddc_counter = 0
             else:
                 self._update_ddc_counter = self._update_ddc_counter + 1
+
+        self._update_x_axis()
     
     @property
     def xlabel(self):
@@ -426,6 +430,13 @@ class Spectrum():
         self._range = (min(self._x_data), max(self._x_data))
         self._plot.layout.xaxis.range = self._range
         self.data_windowsize = self._data_window.shape[0]
+
+        self._plot.data[1].update({
+            'x':self._x_data,
+            'y':np.zeros(len(self._x_data)) + min(self._y_data) - 3
+            # 'y':np.zeros(len(self._x_data)) - 300
+            # 'y':self._y_data - max(self.yrange)
+        })
         if self.post_process == 'max':
             self._y_data = np.zeros(len(self._x_data)) - 300
             self._y_data_current = np.zeros(self._number_samples) - 300
@@ -436,10 +447,12 @@ class Spectrum():
             temp_average = np.average(self._y_data)
             self._y_data = np.zeros(len(self._x_data)) + temp_average
             self._y_data_current = np.zeros(self._number_samples) + temp_average
-        self._plot.data[1].update({
-            'x':self._x_data,
-            'y':np.zeros(len(self._x_data)) - 300
-        })
+        # self._plot.data[1].update({
+        #     'x':self._x_data,
+        #     'y':np.zeros(len(self._x_data)) + min(self._y_data)
+        #     # 'y':np.zeros(len(self._x_data)) - 300
+        #     # 'y':self._y_data - max(self.yrange)
+        # })
         # self.update_ddc_plan()
         
     # def update_ddc_plan(self):
@@ -500,41 +513,3 @@ class Spectrum():
             f"data_windowsize: {self.data_windowsize}\n"
 
         return s
-
-        # self._y_data = plot_data
-        # self._y_data_current = plot_data
-        # self._sample_frequency = sample_frequency
-        # self._number_samples = number_samples
-        # self._decimation_factor = decimation_factor
-        # self._centre_frequency = centre_frequency
-        # self._rbw = (self._sample_frequency/self._decimation_factor) \
-        #     /self._number_samples
-        # self._upper_limit = (self._sample_frequency/self._decimation_factor)/2
-        # self._lower_limit = -(self._sample_frequency/self._decimation_factor)/2
-        # self._upper_index = self._number_samples-1
-        # self._lower_index = 0
-        # self._xlabel = xlabel
-        # self._ylabel = ylabel
-        # self._x_data = np.arange(self._lower_limit,
-        #                          self._upper_limit,
-        #                          self._rbw) + self._centre_frequency
-        # self._range               = (min(self._x_data), max(self._x_data))
-        # self._yrange              = [-150, 0]
-        # self._display_mode        = display_mode
-        # self._spectrum_mode       = spectrum_mode
-        # self._nyquist_stopband    = nyquist_stopband
-        # self._data_window         = np.empty(1)
-        # self._min_indices         = [0]
-        # self._max_indices         = [0]
-        # self._number_min_indices  = 1
-        # self._number_max_indices  = 1
-        # self._update_ddc_counter  = 0
-        # self.ddc_centre_frequency = 0
-        # self.data_windowsize      = data_windowsize
-        # self.post_process         = 'none'
-        # # self.enable_updates       = False
-        # self.enable_updates       = True
-        # self.display_min          = False
-        # self.display_max          = False
-        # self.display_ddc_plan     = []
-        

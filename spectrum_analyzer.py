@@ -1,5 +1,6 @@
 import numpy as np
 import spectrum_graph
+from specgram_graph import Spectrogram
 import matplotlib
 
 import digital_rf
@@ -45,7 +46,28 @@ class SpectrumAnalyzer():
               display_mode=0,
               spectrum_mode=True)
 
+     
+        self.spectrogram = Spectrogram(sample_frequency=self._sample_frequency,
+                                       centre_frequency=self._centre_frequency,
+                                       nyquist_stopband=self._nyquist_stopband,
+                                       width=self._width,
+                                       height=self._height,
+                                       plot_time=10)
+
         self.plot = self.spec.get_plot()
+
+
+    @property
+    def centre_frequency(self):
+        """The centre frequency of the spectrum and spectrogram plots.
+        """
+        return self._centre_frequency
+    
+    @centre_frequency.setter
+    def centre_frequency(self, centre_frequency):
+        self._centre_frequency = centre_frequency
+        self.spec.centre_frequency = centre_frequency
+        self.spectrogram.centre_frequency = centre_frequency
 
 
 
