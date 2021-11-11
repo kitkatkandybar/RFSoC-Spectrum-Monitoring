@@ -280,6 +280,8 @@ class Spectrogram():
             }}
         )   
 
+    def clear_data(self):
+        self._data = np.ones((self._image_height, self._image_width, 3), dtype=np.uint8)*128
 
 
     def _update_image(self):
