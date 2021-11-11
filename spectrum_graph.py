@@ -17,8 +17,7 @@ class Spectrum():
                  data_windowsize=16,
                  spectrum_mode=True,
                  decimation_factor=2,
-                 x_data=None,
-                 log_scale=False):
+                 x_data=None):
     
         self._y_data = plot_data
         self._y_data_current = plot_data
@@ -50,13 +49,12 @@ class Spectrum():
         self._update_ddc_counter  = 0
         self.ddc_centre_frequency = 0
         self.data_windowsize      = data_windowsize
-        self.post_process         = 'max' #'none'
+        self.post_process         = 'none'
         # self.enable_updates       = False
         self.enable_updates       = True
         self.display_min          = False
         self.display_max          = False
         self.display_ddc_plan     = []
-        self._log_scale           = log_scale
         
         
         if (np.ceil(self._centre_frequency/(self._sample_frequency/2)) % 2) == 0:
@@ -76,7 +74,7 @@ class Spectrum():
             'yaxis' : {
                 'title' : self._ylabel,
                 'range' : self._yrange,
-                'autorange' : False
+                'autorange' : False,
             },
             'margin' : {
                 't':25,
@@ -305,7 +303,6 @@ class Spectrum():
                 self._update_ddc_counter = 0
             else:
                 self._update_ddc_counter = self._update_ddc_counter + 1
-
         self._update_x_axis()
     
     @property
@@ -351,19 +348,7 @@ class Spectrum():
     @height.setter
     def height(self, height):
         self._plot.layout.height = height
-        
-    @property
-    def log_scale(self):
-        return self._log_scale
     
-    @log_scale.setter
-    def log_scale(self, log_scale):
-        if log_scale and not self._log_scale:
-            self.ylabel += "(dB)"
-        elif not log_scale and self.log_scale:
-            self.ylabel = self.ylabel[:-4]
-
-        self._log_scale = log_scale
 
     @property
     def number_samples(self):
@@ -420,10 +405,7 @@ class Spectrum():
             fdata = np.minimum(self._y_data_current, fdata)
         else:
             pass
-
-        if self._log_scale:
-            fdata= 10.0 * np.log10(fdata + 1e-12)
-
+            
         return fdata
         
     def _clear_plot(self):
@@ -452,10 +434,9 @@ class Spectrum():
 
         self._plot.data[1].update({
             'x':self._x_data,
-            'y':np.zeros(len(self._x_data)) + min(self._y_data) - 3
-            # 'y':np.zeros(len(self._x_data)) - 300
-            # 'y':self._y_data - max(self.yrange)
+            'y':np.zeros(len(self._x_data)) + self._yrange[0]
         })
+
         if self.post_process == 'max':
             self._y_data = np.zeros(len(self._x_data)) - 300
             self._y_data_current = np.zeros(self._number_samples) - 300

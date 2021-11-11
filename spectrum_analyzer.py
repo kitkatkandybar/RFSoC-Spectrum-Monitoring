@@ -16,8 +16,7 @@ class SpectrumAnalyzer():
                  nyquist_stopband = 1,
                  plot_width = 800,
                  plot_height = 400,
-                 number_samples=None,
-                 log_scale=True):
+                 number_samples=None):
         self._spectrum_fftselector = 6
 
         self._sample_frequency = int(sample_frequency)
@@ -31,7 +30,6 @@ class SpectrumAnalyzer():
         self._width            = plot_width
         self._height           = plot_height
         
-        self._log_scale        = log_scale
  
 
 
@@ -47,8 +45,7 @@ class SpectrumAnalyzer():
               plot_width=self._width,
               plot_height=self._height,
               display_mode=0,
-              spectrum_mode=True,
-              log_scale=log_scale)
+              spectrum_mode=True)
 
      
         self.spectrogram = Spectrogram(sample_frequency=self._sample_frequency,
@@ -72,12 +69,6 @@ class SpectrumAnalyzer():
         self._centre_frequency = centre_frequency
         self.spec.centre_frequency = centre_frequency
         self.spectrogram.centre_frequency = centre_frequency
-
-    @property
-    def log_scale(self):
-        return self._log_scale
-
-
 
 
 

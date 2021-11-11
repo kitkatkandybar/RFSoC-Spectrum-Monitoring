@@ -105,43 +105,6 @@ def spectrum_process(
         # yield spectrum_plot(pdata, freq, cfreq, toffset, log_scale, zscale, title, clr)
 
 
-def spectrum_plot(data, freq, cfreq, toffset, log_scale, zscale, title, clr):
-    """Plot a spectrum from the data for a given fft bin size."""
-    print("spectrum plot")
-    tail_str = ""
-    if log_scale:
-        #        pss = 10.0*np.log10(data / np.max(data))
-        pss = 10.0 * np.log10(data + 1e-12)
-        tail_str = " (dB)"
-    else:
-        pss = data
-
-    print(freq)
-    freq_s = freq / 1.0e6 + cfreq / 1.0e6
-    print(freq_s)
-    zscale_low, zscale_high = zscale
-
-    if zscale_low == 0 and zscale_high == 0:
-        pss_ma = np.ma.masked_invalid(pss)
-        if log_scale:
-            zscale_low  = np.median(pss_ma.min()) - 3.0
-            zscale_high = np.median(pss_ma.max()) + 3.0
-        else:
-            zscale_low  = np.median(pss_ma.min())
-            zscale_high = np.median(pss_ma.max())
-
-    fig = plt.figure()
-    ax = fig.add_subplot(1, 1, 1)
-    ax.plot(freq_s, pss, clr)
-    print(freq_s[0], freq_s[-1], zscale_low, zscale_high)
-    ax.axis([freq_s[0], freq_s[-1], zscale_low, zscale_high])
-    ax.grid(True)
-    ax.set_xlabel("frequency (MHz)")
-    ax.set_ylabel("power spectral density" + tail_str, fontsize=12)
-    ax.set_title(title)
-
-    return fig
-
 
 
 def read_digital_rf_data(input_files, plot_file=None, plot_type="spectrum", channel="",

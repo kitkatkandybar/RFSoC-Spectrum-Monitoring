@@ -17,22 +17,25 @@ class Spectrogram():
                  nyquist_stopband=1,
                  ypixel=2,
                  plot_time=20,
+                 zlabel='Power (dB)',
                  zmin=-80,
                  zmax=0,
                  cmap='jet'):
         
-        self._width = width
-        self._height = height
-        self._image_width = image_width
-        self._image_height = image_height
-        self._sample_frequency = sample_frequency
+        self._width             = width
+        self._height            = height
+        self._image_width       = image_width
+        self._image_height      = image_height
+        self._sample_frequency  = sample_frequency
         self._decimation_factor = decimation_factor
-        self._centre_frequency = centre_frequency
-        self._nyquist_stopband = nyquist_stopband
-        self._ypixel = ypixel
-        self._data = np.ones((self._image_height, self._image_width, 3), dtype=np.uint8)*128
+        self._centre_frequency  = centre_frequency
+        self._nyquist_stopband  = nyquist_stopband
+        self._ypixel      = ypixel
+        self._data        = np.ones((self._image_height, self._image_width, 3), dtype=np.uint8)*128
         self._data_status = False
-        self.cmap = cmap
+        self.cmap         = cmap
+        self._zlabel = zlabel
+
         
         self._image_x = -(self._sample_frequency/self._decimation_factor)/2 + self._centre_frequency
         self._image_y = 0
@@ -42,12 +45,33 @@ class Spectrogram():
             self._nyquist_stopband + self._centre_frequency
         
         self._plot_time = self._image_height
-        self.zmin = zmin
-        self.zmax = zmax
+        self._zmin = zmin
+        self._zmax = zmax
         # self.enable_updates = False
         self.enable_updates = True
+
+        cm = plt.get_cmap(self.cmap)
+        cm = self.matplotlib_to_plotly(cm, 255)
+
+        # to add color bar to plot
+        dummy_trace = {
+            'x': [None],
+            'y': [None],
+            'mode': 'markers',
+            'marker': {
+                'colorscale': cm,
+                'cmin': self._zmin,
+                'cmax': self._zmax,
+                'showscale':True,
+                'colorbar': {
+                    'thickness':20,
+                    'title': {'text': self._zlabel},
+                    
+                },
+            }
+        }
         
-        self._plot = go.FigureWidget(layout={
+        self._plot = go.FigureWidget(data=[dummy_trace], layout={
             'height' : self._height,
             'width' : self._width,
             'yaxis' : {
@@ -69,8 +93,9 @@ class Spectrogram():
                 't':25,
                 'b':25,
                 'l':25,
-                'r':25,
-        }})
+                'r':25,},
+
+        })
         
         img = Image.fromarray(self._data, 'RGB')
         self._plot.add_layout_image(
@@ -84,11 +109,24 @@ class Spectrogram():
                 sizey=self._plot_time,
                 sizing='stretch',
                 opacity=1,
-                layer="below")
+                layer="below",
+                )
         )
         
         self._update_image()
-        
+
+
+    # Taken from https://stackoverflow.com/questions/55447131/how-to-add-a-colorbar-to-an-already-existing-plotly-figure
+    def matplotlib_to_plotly(self,cmap, pl_entries):
+        h = 1.0/(pl_entries-1)
+        pl_colorscale = []
+
+        for k in range(pl_entries):
+            C = list(map(np.uint8, np.array(cmap(k*h)[:3])*255))
+            pl_colorscale.append([k*h, 'rgb'+str((C[0], C[1], C[2]))])
+
+        return pl_colorscale
+            
     @property
     def template(self):
         return self._plot.layout.template
@@ -106,6 +144,7 @@ class Spectrogram():
         if self.enable_updates:
             self._data_status = True
             # value = np.fft.fftshift(data) # FFT Shift
+
             value = data
             value = np.array(np.interp(value, (self.zmin, self.zmax), (0, 1)), dtype=np.single) # Scale Z-Axis
             value = np.resize(signal.resample(value, self._image_width), (1, self._image_width)) # Resample X-Axis
@@ -117,7 +156,7 @@ class Spectrogram():
             img = Image.fromarray(self._data, 'RGB') # Create image
             self._plot.update_layout_images({'source' : img}) # Set as background
             self._data_status = False
-        
+
     @property
     def ypixel(self):
         return self._ypixel
@@ -199,7 +238,51 @@ class Spectrogram():
             }})
             self._plot.update_layout_images({'sizey' : self._plot_time})
             self._update_image()
+
+    @property
+    def zlabel(self):
+        return self._zlabel
         
+    @zlabel.setter
+    def zlabel(self, zlabel):
+        self._zlabel = zlabel
+        self._plot.update_traces(
+            {'marker': {
+                'colorbar': {
+                    # 'title': {'text': self._zlabel},
+                    'title': {'text': zlabel},
+                }}}
+        )
+        
+    @property
+    def zmin(self):
+        return self._zmin
+        
+    @zmin.setter
+    def zmin(self, zmin):
+        self._zmin = zmin
+        self._plot.update_traces(
+            {'marker': {
+               'cmin': self._zmin,
+            }}
+        )   
+        
+
+    @property
+    def zmax(self):
+        return self._zmax
+        
+    @zmax.setter
+    def zmax(self, zmax):
+        self._zmax = zmax
+        self._plot.update_traces(
+            {'marker': {
+               'cmax': self._zmax,
+            }}
+        )   
+
+
+
     def _update_image(self):
         self._lower_limit = (-(self._sample_frequency/self._decimation_factor)/2) * self._nyquist_stopband + self._centre_frequency 
         self._upper_limit = ((self._sample_frequency/self._decimation_factor)/2) * self._nyquist_stopband + self._centre_frequency
@@ -212,6 +295,6 @@ class Spectrogram():
         self._plot.update_layout_images({'source' : img,
                                          'x' : self._image_x,
                                          'sizex' : (self._sample_frequency/self._decimation_factor)})
-    
+
     def get_plot(self):
         return self._plot
