@@ -249,9 +249,8 @@ class Spectrogram():
         self._plot.update_traces(
             {'marker': {
                 'colorbar': {
-                    # 'title': {'text': self._zlabel},
                     'title': {'text': zlabel},
-                }}}
+            }}}
         )
         
     @property
@@ -295,6 +294,7 @@ class Spectrogram():
         self._plot.update_layout_images({'source' : img,
                                          'x' : self._image_x,
                                          'sizex' : (self._sample_frequency/self._decimation_factor)})
+        print(f'specgram range: {self._lower_limit}, {self._upper_limit}, s freq: {self._sample_frequency}, dec factor: {self._decimation_factor} cent freq: {self._centre_frequency}')
 
     def get_plot(self):
         return self._plot

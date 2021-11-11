@@ -50,6 +50,29 @@ radio = html.Div([
 
 
 
+def get_data(drf_dir):
+    spec_datas = read_digital_rf_data([drf_dir], plot_file=None, plot_type="spectrum", channel="discone",
+        subchan=0, sfreq=0.0, cfreq=None, atime=0, start_sample=0, stop_sample=1000000, modulus=10000, integration=1, 
+        zscale=(0, 0), bins=1024, log_scale=False, detrend=False,msl_code_length=0,
+        msl_baud_length=0)
+
+    
+    spec_data = spec_datas[0]
+    print(f"sfreq: {spec_data['sfreq']}")
+
+    sa = SpectrumAnalyzer(number_samples=spec_data['data'].shape[0], sample_frequency=spec_data['sfreq'])
+    y_max = max([max(d['data']) for d in spec_datas])
+    y_min = min([min(d['data']) for d in spec_datas])
+    print(f"range: {y_min}, {y_max}")
+    sa.spec.yrange= (y_min, y_max)
+    sa.spectrogram.zmin = y_min
+    sa.spectrogram.zmax = y_max
+    print(f'yrange: {sa.spec.yrange}')
+
+    sa.centre_frequency = spec_data['cfreq']
+
+
+
 drf_dir = "C:/Users/yanag/openradar/openradar_antennas_wb_hf/"
 # drf_dir = "C:/Users/yanag/openradar/openradar_antennas_wb_uhf/"
 

@@ -53,6 +53,8 @@ class SpectrumAnalyzer():
                                        nyquist_stopband=self._nyquist_stopband,
                                        width=self._width,
                                        height=self._height,
+                                       decimation_factor=1, # TODO what should this be
+
                                        plot_time=10)
 
         self.plot = self.spec.get_plot()
