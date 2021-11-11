@@ -56,7 +56,7 @@ def get_data(drf_dir):
         zscale=(0, 0), bins=1024, log_scale=False, detrend=False,msl_code_length=0,
         msl_baud_length=0)
 
-    
+
     spec_data = spec_datas[0]
     print(f"sfreq: {spec_data['sfreq']}")
 
@@ -107,6 +107,10 @@ app.layout = html.Div(children=[
     html.H1(children='Digital RF Dashboard'),
     html.Button('Reset', id='reset-val', n_clicks=0),
     radio,
+    # dcc.Input(
+    #         id="in",
+    #         type="file",
+    #         placeholder="input type file"),
     dcc.Graph(
         id='spectrum-graph',
         figure=sa.plot
