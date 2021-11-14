@@ -75,15 +75,8 @@ def spectrum_process(
 
             pblock /= integration
 
-        #     if log_scale:
-        # #        pss = 10.0*np.log10(data / np.max(data))
-        #         pblock = 10.0 * np.log10(pblock + 1e-12)
 
             yield pblock, freq
-
-            # yield spectrum_plot(
-            #     pblock, freq, cfreq, block_toffset, log_scale, zscale, title, clr
-            # )
 
             block += 1
             block_toffset += block_size / sfreq
@@ -97,12 +90,8 @@ def spectrum_process(
         
         print(f"max of data: {max(pdata)}")
 
-        # if log_scale:
-        # #        pss = 10.0*np.log10(data / np.max(data))
-        #     pdata = 10.0 * np.log10(pdata + 1e-12)
 
         yield pdata, freq
-        # yield spectrum_plot(pdata, freq, cfreq, toffset, log_scale, zscale, title, clr)
 
 
 
@@ -175,11 +164,6 @@ def read_digital_rf_data(input_files, plot_file=None, plot_type="spectrum", chan
 
             d = drf.read_vector(sstart, dlen, chans[chidx], subchan)
 
-
-            print(f"d.shape: {d.shape}")
-
-            print("d: ", d[0:10])
-
             if len(d) < (stop_sample - start_sample):
                 print(
                     "Probable end of file, the data size is less than expected value."
@@ -194,7 +178,8 @@ def read_digital_rf_data(input_files, plot_file=None, plot_type="spectrum", chan
         except:
             print(("problem loading file %s" % f))
             traceback.print_exc(file=sys.stdout)
-            sys.exit()
+            raise
+            # sys.exit()
 
     print(f"plot_type: {plot_type}")
 

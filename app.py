@@ -67,8 +67,14 @@ app.layout = html.Div(children=[
     ),
     html.Button('Load Data', id='load-val', n_clicks=0),
     html.Br(),
+    html.Div(id='drf-err'),
     html.Div(id='metadata-output'),
-    html.Button('Reset', id='reset-val', n_clicks=0),
+    html.Button(
+        'Playback data from beginning', 
+        id='reset-val',
+        n_clicks=0,
+        disabled=True,
+    ),
     radio,
 
     html.Div(
@@ -102,6 +108,7 @@ app.layout = html.Div(children=[
 # 
 @app.callback(
     dash.Output('interval-component', 'max_intervals'),
+    dash.Output('drf-err', 'children'),
     dash.Input('load-val', 'n_clicks'),
     dash.State('drf-path', 'value'),
 )
@@ -114,12 +121,15 @@ def update_drf_data(n_clicks, drf_path):
     # clear spectrogram plot when reset is clicked
     print(f"called update drf data, n: {n_clicks}")
     if n_clicks < 1:
-        return 100
+        return 100, None
 
-    spec_datas = read_digital_rf_data([drf_path], plot_file=None, plot_type="spectrum", #channel="discone",
-        subchan=0, sfreq=0.0, cfreq=None, atime=0, start_sample=0, stop_sample=1000000, modulus=10000, integration=1, 
-        zscale=(0, 0), bins=1024, log_scale=False, detrend=False,msl_code_length=0,
-        msl_baud_length=0)
+    try:
+        spec_datas = read_digital_rf_data([drf_path], plot_file=None, plot_type="spectrum", #channel="discone",
+            subchan=0, sfreq=0.0, cfreq=None, atime=0, start_sample=0, stop_sample=1000000, modulus=10000, integration=1, 
+            zscale=(0, 0), bins=1024, log_scale=False, detrend=False,msl_code_length=0,
+            msl_baud_length=0)
+    except Exception as e:
+        return dash.no_update, str(e)
 
 
     # set metadata for plots
@@ -151,17 +161,18 @@ def update_drf_data(n_clicks, drf_path):
     sa.spectrogram.number_samples   = n_samples
 
 
-    return len(spec_datas['data'])
+    return len(spec_datas['data']), None
 
 
 @app.callback(
     dash.Output(component_id='metadata-output', component_property='children'),
+    dash.Output(component_id='reset-val', component_property='disabled'),
     dash.Input('interval-component', 'max_intervals'),
 )
 def update_metadeta_output(n):
     """ update metadata section when Digital RF data is loaded"""
     if spec_datas is None:
-        return None
+        return None, True
 
     children = [
         html.H4("Metadata:"),
@@ -170,7 +181,9 @@ def update_metadeta_output(n):
         html.P(f"Channel: {spec_datas['metadata']['channel']}"),
 
     ]
-    return children
+    return children, False
+
+
 
 
 
