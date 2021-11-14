@@ -51,13 +51,15 @@ class SpectrumAnalyzer():
         self.spectrogram = Spectrogram(sample_frequency=self._sample_frequency,
                                        centre_frequency=self._centre_frequency,
                                        nyquist_stopband=self._nyquist_stopband,
-                                       width=self._width,
+                                       # width=self._width,
                                        height=self._height,
                                        decimation_factor=1, # TODO what should this be
 
                                        plot_time=10)
 
         self.plot = self.spec.get_plot()
+
+        self.spec.hide_data()
 
 
     @property

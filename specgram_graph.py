@@ -30,10 +30,10 @@ class Spectrogram():
         self._decimation_factor = decimation_factor
         self._centre_frequency  = centre_frequency
         self._nyquist_stopband  = nyquist_stopband
-        self._ypixel      = ypixel
-        self._data        = np.ones((self._image_height, self._image_width, 3), dtype=np.uint8)*128
-        self._data_status = False
-        self.cmap         = cmap
+        self._ypixel            = ypixel
+        self._data              = np.ones((self._image_height, self._image_width, 3), dtype=np.uint8)*128
+        self._data_status       = False
+        self.cmap               = cmap
         self._zlabel = zlabel
 
         
@@ -70,7 +70,8 @@ class Spectrogram():
                 },
             }
         }
-        
+
+
         self._plot = go.FigureWidget(data=[dummy_trace], layout={
             'height' : self._height,
             'width' : self._width,
@@ -112,6 +113,17 @@ class Spectrogram():
                 layer="below",
                 )
         )
+
+        # self._plot.add_trace(go.Histogram2d(
+        #     x=self._data[:,:,0],
+        #     y=self_data[:,:,1],
+        #     colorscale='YlGnBu',
+        #     zmax=10,
+        #     nbinsx=14,
+        #     nbinsy=14,
+        #     zauto=False,
+        # ))
+        
         
         self._update_image()
 

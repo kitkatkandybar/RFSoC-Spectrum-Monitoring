@@ -2,8 +2,8 @@
 # visit http://127.0.0.1:8050/ in your web browser.
 
 import dash
-import dash_core_components as dcc
-import dash_html_components as html
+from dash import dcc
+from dash import html
 import plotly.express as px
 import pandas as pd
 import numpy as np
@@ -52,59 +52,63 @@ radio = html.Div([
 ])
 
 
-
-drf_dir = "C:/Users/yanag/openradar/openradar_antennas_wb_hf/"
-# drf_dir = "C:/Users/yanag/openradar/openradar_antennas_wb_uhf/"
-
-
-
 spec_datas = None
-y_max = None
-y_min = None
-sa = SpectrumAnalyzer()
+y_max      = None
+y_min      = None
+sa         = SpectrumAnalyzer()
 
 
 
 app.layout = html.Div(children=[
-    html.H1(children='Digital RF Dashboard'),
+    html.H1(children='Spectrum Monitoring Dashboard'),
     dcc.Input(
         id="drf-path", type="text",value="C:/Users/yanag/openradar/openradar_antennas_wb_hf/",
         style={'width': 400}
     ),
     html.Button('Load Data', id='load-val', n_clicks=0),
     html.Br(),
+    html.Div(id='metadata-output'),
     html.Button('Reset', id='reset-val', n_clicks=0),
     radio,
 
-    dcc.Graph(
-        id='spectrum-graph',
-        figure=sa.plot
-    ),
-    dcc.Interval(
-            id='interval-component',
-            interval=1*100, # in milliseconds
-            n_intervals=0,
-            # max_intervals=len(spec_datas),
-            max_intervals=100,
-            disabled=True,
-        ),
-    dcc.Graph(
-        id='specgram-graph',
-        figure=sa.spectrogram.get_plot()
-    ),
-    html.P(id='placeholder', n_clicks=0)
+    html.Div(
+        className="graph-section",
+        children=[
+            dcc.Graph(
+                id='spectrum-graph',
+                figure=sa.plot
+            ),
+            dcc.Interval(
+                    id='interval-component',
+                    interval=1*100, # in milliseconds
+                    n_intervals=0,
+                    # max_intervals=len(spec_datas),
+                    max_intervals=100,
+                    disabled=True,
+                ),
+            dcc.Graph(
+                id='specgram-graph',
+                figure=sa.spectrogram.get_plot()
+            ),
+            html.P(id='placeholder', n_clicks=0)
+
+        ],
+    )
+
     
 ])
 
 
+# 
 @app.callback(
     dash.Output('interval-component', 'max_intervals'),
-    # dash.Output('placeholder', 'n_clicks'),
-
     dash.Input('load-val', 'n_clicks'),
     dash.State('drf-path', 'value'),
 )
 def update_drf_data(n_clicks, drf_path):
+    """
+    Load metadata for Digital RF file when "load data" button is clicked
+    """
     global spec_datas
 
     # clear spectrogram plot when reset is clicked
@@ -112,7 +116,7 @@ def update_drf_data(n_clicks, drf_path):
     if n_clicks < 1:
         return 100
 
-    spec_datas = read_digital_rf_data([drf_path], plot_file=None, plot_type="spectrum", channel="discone",
+    spec_datas = read_digital_rf_data([drf_path], plot_file=None, plot_type="spectrum", #channel="discone",
         subchan=0, sfreq=0.0, cfreq=None, atime=0, start_sample=0, stop_sample=1000000, modulus=10000, integration=1, 
         zscale=(0, 0), bins=1024, log_scale=False, detrend=False,msl_code_length=0,
         msl_baud_length=0)
@@ -122,21 +126,21 @@ def update_drf_data(n_clicks, drf_path):
     print("loading drf data...")
     sa.spectrogram.clear_data()
 
-    spec_data  = spec_datas[0]
-    sfreq      = spec_data['sfreq']
+    spec_data  = spec_datas['data'][0]
+    sfreq      = spec_datas['metadata']['sfreq']
     n_samples  = spec_data['data'].shape[0]
 
     global y_min
     global y_max
-    y_max = max([max(d['data']) for d in spec_datas])
-    y_min = min([min(d['data']) for d in spec_datas])
+    y_max = max([max(d['data']) for d in spec_datas['data']])
+    y_min = min([min(d['data']) for d in spec_datas['data']])
 
     sa.spec.yrange= (y_min, y_max)
     sa.spectrogram.zmin = y_min
     sa.spectrogram.zmax = y_max
     print(f'yrange: {sa.spec.yrange}')
 
-    sa.centre_frequency = spec_data['cfreq']
+    sa.centre_frequency = spec_datas['metadata']['cfreq']
     print(f'center freq: {sa.spec.centre_frequency}')
 
 
@@ -147,8 +151,26 @@ def update_drf_data(n_clicks, drf_path):
     sa.spectrogram.number_samples   = n_samples
 
 
-    return len(spec_datas)
+    return len(spec_datas['data'])
 
+
+@app.callback(
+    dash.Output(component_id='metadata-output', component_property='children'),
+    dash.Input('interval-component', 'max_intervals'),
+)
+def update_metadeta_output(n):
+    """ update metadata section when Digital RF data is loaded"""
+    if spec_datas is None:
+        return None
+
+    children = [
+        html.H4("Metadata:"),
+        html.P(f"Sample Rate: {spec_datas['metadata']['sfreq']} samples/second"),
+        html.P(f"Center Frequency: {spec_datas['metadata']['cfreq']} Hz"),
+        html.P(f"Channel: {spec_datas['metadata']['channel']}"),
+
+    ]
+    return children
 
 
 
@@ -160,6 +182,7 @@ def update_drf_data(n_clicks, drf_path):
 def update_interval(reset_clicks, log_scale):
     # clear spectrogram plot when reset is clicked
     sa.spectrogram.clear_data()
+
     if log_scale == 'on':
         sa.spec.ylabel          = "Amplitude (dB)" 
         sa.spec.yrange= (10.0 * np.log10(y_min + 1e-12) - 3, 10.0 * np.log10(y_max + 1e-12) + 10)
@@ -168,11 +191,11 @@ def update_interval(reset_clicks, log_scale):
         sa.spectrogram.zmax     = 10.0 * np.log10(y_max + 1e-12) + 10
         
     else:
-        sa.spec.ylabel = "Amplitude" 
-        sa.spec.yrange         = (y_min, y_max)
-        sa.spectrogram.zlabel =  "Power"
-        sa.spectrogram.zmin     = y_min
-        sa.spectrogram.zmax     = y_max
+        sa.spec.ylabel        = "Amplitude" 
+        sa.spec.yrange        = (y_min, y_max)
+        sa.spectrogram.zlabel = "Power"
+        sa.spectrogram.zmin   = y_min
+        sa.spectrogram.zmax   = y_max
 
 
     if reset_clicks > 0:
@@ -185,6 +208,9 @@ def update_interval(reset_clicks, log_scale):
     dash.Input('interval-component', 'disabled'),
 )
 def disabled_update(disabled):
+    if not disabled:
+        # pass
+        sa.spec.show_data()
     return 0
 
 
@@ -201,9 +227,9 @@ def update_spectrum_graph(n, log_scale):
     print(f"int comp: {n}")
     prop_id = ctx.triggered[0]['prop_id'].split('.')[0]
     if prop_id == "interval-component":
-        if n < len(spec_datas):
+        if n < len(spec_datas['data']):
             print(f"data {n}")
-            d = spec_datas[n]['data']
+            d = spec_datas['data'][n]['data']
             if log_scale == 'on':
                 d = 10.0 * np.log10(d + 1e-12)
             sa.spec.data        = d
@@ -232,8 +258,8 @@ def update_specgram_graph(n, log_scale):
 
     prop_id = ctx.triggered[0]['prop_id'].split('.')[0]
     if prop_id == "interval-component":
-        if n < len(spec_datas):
-            d = spec_datas[n]['data']
+        if n < len(spec_datas['data']):
+            d = spec_datas['data'][n]['data']
             if log_scale == 'on':
                 d = 10.0 * np.log10(d + 1e-12)
             sa.spectrogram.data = d

@@ -133,6 +133,7 @@ def read_digital_rf_data(input_files, plot_file=None, plot_type="spectrum", chan
             print("loading metadata")
 
             drf_properties = drf.get_properties( chans[chidx])
+            print(f"drf properties: {drf_properties}")
             sfreq_ld       = drf_properties["samples_per_second"]
             sfreq          = float(sfreq_ld)
             toffset        = start_sample
@@ -156,6 +157,7 @@ def read_digital_rf_data(input_files, plot_file=None, plot_type="spectrum", chan
                     end_sample=sstart + dlen,
                     channel_name=chans[chidx],
                 )
+                print(f"metadata_samples: {metadata_samples}")
                 # use center frequency of start of data, even if it changes
                 for metadata in metadata_samples.values():
                     try:
@@ -187,7 +189,6 @@ def read_digital_rf_data(input_files, plot_file=None, plot_type="spectrum", chan
             if msl_code_length > 0:
                 d = apply_msl_filter(d, msl_code_length, msl_baud_length)
 
-           
 
 
         except:
@@ -200,7 +201,7 @@ def read_digital_rf_data(input_files, plot_file=None, plot_type="spectrum", chan
     if plot_type == "spectrum":
         print('boop')
         # fig_gen = spectrum_process(
-        data = []
+        data = { 'metadata': {'cfreq': cfreq, 'sfreq': sfreq, 'channel': chans[chidx]}, 'data': []}
         gen = spectrum_process(
             d,
             sfreq,
@@ -216,32 +217,9 @@ def read_digital_rf_data(input_files, plot_file=None, plot_type="spectrum", chan
             "b",
         )
         for g in gen:
-            data.append({'data': g[0], 'freq': g[1], 'cfreq': cfreq, 'sfreq': sfreq})
+            data['data'].append({'data': g[0], 'freq': g[1]})
         # print(f"fig_gen: {fig_gen}")
         return data
-
-    elif plot_type == "specgram":
-        fig_gen = specgram_process(
-            d,
-            sfreq,
-            cfreq,
-            toffset,
-            modulus,
-            integration,
-            bins,
-            detrend,
-            log_scale,
-            zscale,
-            title,
-        )
-
-    for fig in fig_gen:
-        fig.tight_layout()
-        if save_plot:
-            print("saving plot")
-            fig.savefig(plot_file, bbox_inches="tight", pad_inches=0.05)
-        else:
-            plt.show()
 
 if __name__ == "__main__":
     # default values

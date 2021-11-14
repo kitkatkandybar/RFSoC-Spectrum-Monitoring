@@ -103,7 +103,8 @@ class Spectrum():
         plot_data.append(
             go.Scatter(
                 x = self._x_data,
-                y = np.zeros(self._number_samples) - 300,
+                # y = np.zeros(self._number_samples) - 300,
+                y = np.zeros(self._number_samples) - self._yrange[0] - 50,
                 # y = self._y_data,
                 name = '???',
                 fill = 'tonexty',
@@ -409,7 +410,8 @@ class Spectrum():
         return fdata
         
     def _clear_plot(self):
-        zeros = np.zeros(self._number_samples, dtype=np.single) - 300
+        # zeros = np.zeros(self._number_samples, dtype=np.single) - 300 
+        zeros = np.zeros(self._number_samples, dtype=np.single) - self._yrange[0] - 50
         zdata = zeros[self._lower_index : self._upper_index]
         self._plot.data[0].y = zdata
         
@@ -497,6 +499,14 @@ class Spectrum():
         
     def get_plot(self):
         return self._plot
+
+
+    def hide_data(self):
+        print('HIDING SPECTRUM DATA')
+        self._plot.update_traces({'visible': False})
+
+    def show_data(self):
+        self._plot.update_traces({'visible': True})
 
 
     def __str__(self):
