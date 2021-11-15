@@ -197,14 +197,14 @@ def update_interval(reset_clicks, log_scale):
     sa.spectrogram.clear_data()
 
     if log_scale == 'on':
-        sa.spec.ylabel          = "Amplitude (dB)" 
+        sa.spec.ylabel          = "Power Spectrum (dB)" 
         sa.spec.yrange= (10.0 * np.log10(y_min + 1e-12) - 3, 10.0 * np.log10(y_max + 1e-12) + 10)
         sa.spectrogram.zlabel =  "Power (dB)"
         sa.spectrogram.zmin     = 10.0 * np.log10(y_min + 1e-12) - 3
         sa.spectrogram.zmax     = 10.0 * np.log10(y_max + 1e-12) + 10
         
     else:
-        sa.spec.ylabel        = "Amplitude" 
+        sa.spec.ylabel        = "Power Spectrum" 
         sa.spec.yrange        = (y_min, y_max)
         sa.spectrogram.zlabel = "Power"
         sa.spectrogram.zmin   = y_min

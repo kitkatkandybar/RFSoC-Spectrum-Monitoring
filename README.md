@@ -11,6 +11,6 @@
 
 Install anaconda https://anaconda.org/
 
-```conda create --name rfsoc --file requirements.txt python=3.9```
+```conda env create -f environment.yaml```
 
 ```conda activate rfsoc```
