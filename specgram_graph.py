@@ -1,3 +1,8 @@
+"""
+This file was modified from StrathSDR's sdr_plot.py Spectrogram class. It defines a plotly spectrogram waterfall plot
+
+"""
+
 import plotly.graph_objs as go
 import numpy as np
 from PIL import Image
@@ -6,6 +11,10 @@ import matplotlib.pyplot as plt
 
 
 class Spectrogram():
+    """
+    
+
+    """
     def __init__(self,
                  width=800,
                  height=400,
@@ -37,6 +46,7 @@ class Spectrogram():
         self._zlabel = zlabel
 
         
+        # the data of this plot is represented as a background image
         self._image_x = -(self._sample_frequency/self._decimation_factor)/2 + self._centre_frequency
         self._image_y = 0
         self._lower_limit = (-(self._sample_frequency/self._decimation_factor)/2) * \
@@ -53,7 +63,7 @@ class Spectrogram():
         cm = plt.get_cmap(self.cmap)
         cm = self.matplotlib_to_plotly(cm, 255)
 
-        # to add color bar to plot
+        # dummy trace needed to add color bar to plot
         dummy_trace = {
             'x': [None],
             'y': [None],

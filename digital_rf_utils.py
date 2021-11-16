@@ -1,5 +1,6 @@
 """
-This file is a modified version of drf_plot.py
+This file is a modified version of drf_plot.py from the DigitalRF library, which reads in Digital RF data and processes it
+for graphing purposes
 """
 
 import traceback
@@ -26,10 +27,12 @@ def spectrum_process(
     title,
     clr,
 ):
-    """Break spectrum by modulus and display each block. Integration here acts
+    """
+    Process data into a form useable for spectrum and spectrogram graphs.
+
+    Break spectrum by modulus and display each block. Integration here acts
     as a pure average on the spectral data.
     """
-    print("spectrum process!")
 
     if detrend:
         dfn = matplotlib.mlab.detrend_mean
@@ -85,11 +88,7 @@ def spectrum_process(
         pdata, freq = matplotlib.mlab.psd(
             data, NFFT=bins, Fs=sfreq, detrend=dfn, window=win, scale_by_freq=False
         )
-        print(f'freq: {freq + cfreq}')
-        print(f"bins: {bins}, sfreq: {sfreq}, dfn: {dfn}, win: {win}")
-        
-        print(f"max of data: {max(pdata)}")
-
+  
 
         yield pdata, freq
 
@@ -102,6 +101,8 @@ def read_digital_rf_data(input_files, plot_file=None, plot_type="spectrum", chan
         msl_baud_length=0,save_plot = False, title="title"):
 
     for f in input_files:
+        # read in options and convert to variables
+
         print(("file %s" % f))
 
         try:
@@ -183,9 +184,8 @@ def read_digital_rf_data(input_files, plot_file=None, plot_type="spectrum", chan
 
     print(f"plot_type: {plot_type}")
 
+    # 'spectrum' plot type also works for spectrogram data 
     if plot_type == "spectrum":
-        print('boop')
-        # fig_gen = spectrum_process(
         data = { 'metadata': {'cfreq': cfreq, 'sfreq': sfreq, 'channel': chans[chidx]}, 'data': []}
         gen = spectrum_process(
             d,
@@ -203,7 +203,6 @@ def read_digital_rf_data(input_files, plot_file=None, plot_type="spectrum", chan
         )
         for g in gen:
             data['data'].append({'data': g[0], 'freq': g[1]})
-        # print(f"fig_gen: {fig_gen}")
         return data
 
 if __name__ == "__main__":

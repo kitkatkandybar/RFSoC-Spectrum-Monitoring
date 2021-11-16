@@ -1,3 +1,8 @@
+"""
+This file was modified from StrathSDR's sdr_plot.py Spectrum class. It defines a plotly-based spectrum plot
+
+"""
+
 import plotly.graph_objs as go
 import numpy as np
 # from rfsoc_freqplan import calculation # TODO: where is this from???
@@ -140,6 +145,9 @@ class Spectrum():
             )
         )
         
+        # these are RFSOC specific variables
+
+
         # self.ddc_plan = calculation.FrequencyPlannerDDC(
         #     fs_rf=self._sample_frequency,
         #     il_factor=IL_FACTOR,
@@ -175,7 +183,10 @@ class Spectrum():
         self._clear_plot()
         self._update_x_limits()
         self._update_x_axis()
-        
+      
+
+    """ define externally modifiable properties """
+
     @property
     def decimation_factor(self):
         return self._decimation_factor
@@ -502,7 +513,6 @@ class Spectrum():
 
 
     def hide_data(self):
-        print('HIDING SPECTRUM DATA')
         self._plot.update_traces({'visible': False})
 
     def show_data(self):
