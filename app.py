@@ -56,7 +56,7 @@ config = {
 
 
 # drf_dir = "C:/Users/yanag/openradar/openradar_antennas_wb_hf/"
-drf_dir = "C:/Users/yanag/openradar/openradar_antennas_wb_uhf/"
+drf_dir = "/Users/fatman/Documents/data/haystack/openradar_antennas_wb_uhf/"
 # spec_datas = read_digital_rf_data([drf_dir], plot_file=None, plot_type="spectrum", channel="discone",
 #         subchan=0, sfreq=0.0, cfreq=None, atime=0, start_sample=0, stop_sample=1000000, modulus=None, integration=1, 
 #         zscale=(0, 0), bins=1024, log_scale=True, detrend=False,msl_code_length=0,
