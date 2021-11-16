@@ -9,22 +9,22 @@ from spectrum_analyzer import SpectrumAnalyzer
 from digital_rf_utils import read_digital_rf_data
 
 
-def generate_spectrum_analyzer_figure(id, fig, sample_min = 0, sample_max = 1000000, sample_step = 10000, sample_start_default = 300000, sample_stop_default = 700000 ):
+def generate_spectrum_analyzer_figure(id, fig, sample_min = 0, sample_max = 1000000, sample_step = 10000, sample_start_default = 300000, sample_stop_default = 700000, sample_mark_width = 100000 ):
     return html.Div(children = [
         dcc.Graph(
             id = id,
             figure = fig
         ),
-        html.H4(children='enter file path:'),
-        dcc.Input(placeholder='enter text', type='text'),
-        html.H4(children=' '),
-        dcc.RadioItems(
-            options=[
-                {'label': 'Log Scale', 'value': 'log_scale'},
-                {'label': 'Linear Scale', 'value': 'linear_scale'}
-            ],
-            value= 'linear_scale'
-        ),
+            html.H4(children='enter file path:'),
+            dcc.Input(placeholder='enter text', type='text'),
+            html.H4(children=' '),
+            dcc.RadioItems(
+                options=[
+                    {'label': 'Log Scale', 'value': 'log_scale'},
+                    {'label': 'Linear Scale', 'value': 'linear_scale'}
+                ],
+                value= 'linear_scale',
+            ),
         html.H4(children='antenna type:'),
         dcc.Dropdown(
             options=[
@@ -41,7 +41,8 @@ def generate_spectrum_analyzer_figure(id, fig, sample_min = 0, sample_max = 1000
             min=sample_min,
             max=sample_max,
             step=sample_step,
-            value=[sample_start_default, sample_stop_default]
+            value=[sample_start_default, sample_stop_default],
+            marks={i: '{}'.format(i) for i in range(sample_min, sample_max, sample_mark_width)},
         ),
         html.Div(id= id + '-output-container-range-slider'),
         html.H4(children='number of bins:'),
