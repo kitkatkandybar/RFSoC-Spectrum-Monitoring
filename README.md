@@ -4,3 +4,13 @@
 ---
 
 ### Table of Contents
+
+
+
+## Getting starting
+
+Install anaconda https://anaconda.org/
+
+```conda env create -f environment.yaml```
+
+```conda activate rfsoc```

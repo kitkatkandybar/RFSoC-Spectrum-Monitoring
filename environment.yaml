@@ -1,0 +1,15 @@
+name: rfsoc
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - pandas
+  - dash
+  - jupyter-dash
+  - dash-core-components
+  - dash-html-components
+  - digital_rf
+  - ipywidgets
+  - matplotlib
+  - scipy
+prefix: C:\Users\yanag\.conda\envs\rfsoc
