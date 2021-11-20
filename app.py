@@ -15,14 +15,23 @@ from dash import html
 import plotly.express as px
 import pandas as pd
 import numpy as np
+import redis
+import json
+
 
 from spectrum_analyzer import SpectrumAnalyzer
 from digital_rf_utils import read_digital_rf_data
 
 
 
+
+
 # create a Dash app
 app = dash.Dash(__name__)
+
+redis_instance = redis.Redis(host='localhost', port=6379, db=0)
+
+
 
 
 # create radio option components
@@ -40,12 +49,10 @@ radio = html.Div([
                     {
                         "label": "On",
                         "value": 'on',
-                        # "disabled": True,
                     },
                     {
                         "label": "Off",
                         "value": 'off',
-                        # "disabled": True,
 
                     },
                 ],
@@ -106,7 +113,14 @@ app.layout = html.Div(children=[
                 id='specgram-graph',
                 figure=sa.spectrogram.get_plot()
             ),
-            html.P(id='placeholder', n_clicks=0)
+            html.P(id='placeholder', n_clicks=0),
+            dcc.Interval(
+                    id='redis-interval',
+                    interval=5*1000, # in milliseconds
+                    n_intervals=0,
+                    max_intervals=1000,
+                    disabled=False,
+                ),
 
         ],
     )
@@ -114,6 +128,19 @@ app.layout = html.Div(children=[
     
 ])
 
+
+@app.callback(dash.Output('placeholder', 'n_clicks'),
+              dash.Input('redis-interval', 'n_intervals'))
+def read_redis_stream(n_intervals):
+    streamname = 'example'
+    # r = redis.Redis(host='localhost', port=6379, db=0)
+    print("reading redis stream?")
+    rstrm = redis_instance.xread({streamname: '$'}, None, 0)
+    print("foo")
+    xlist = json.loads(rstrm[0][1][0][1][b'data'])
+    print(f"data is: {xlist}")
+
+    return None
 
 
 @app.callback(
@@ -141,9 +168,20 @@ def update_drf_data(n_clicks, drf_path):
             subchan=0, sfreq=0.0, cfreq=None, atime=0, start_sample=0, stop_sample=1000000, modulus=10000, integration=1, 
             zscale=(0, 0), bins=1024, log_scale=False, detrend=False,msl_code_length=0,
             msl_baud_length=0)
+
+
     except Exception as e:
         # output error message
         return dash.no_update, str(e)
+
+
+    # get metadata from redis
+    print("reading redis stream?")
+    rstrm = redis_instance.xread({streamname: '$'}, None, 0)
+    print("foo")
+    xlist = json.loads(rstrm[0][1][0][1][b'data'])
+    print(f"data is: {xlist}")
+
 
 
     # set metadata for plots
@@ -159,7 +197,7 @@ def update_drf_data(n_clicks, drf_path):
     y_min = min([min(d['data']) for d in spec_datas['data']])
 
     # set axes and other basic info for plots
-    sa.spec.yrange= (y_min, y_max)
+    sa.spec.yrange      = (y_min, y_max)
     sa.spectrogram.zmin = y_min
     sa.spectrogram.zmax = y_max
 
@@ -218,7 +256,7 @@ def update_interval(reset_clicks, log_scale):
     if log_scale == 'on':
         sa.spec.ylabel          = "Power Spectrum (dB)" 
         sa.spec.yrange= (10.0 * np.log10(y_min + 1e-12) - 3, 10.0 * np.log10(y_max + 1e-12) + 10)
-        sa.spectrogram.zlabel =  "Power (dB)"
+        sa.spectrogram.zlabel   =  "Power (dB)"
         sa.spectrogram.zmin     = 10.0 * np.log10(y_min + 1e-12) - 3
         sa.spectrogram.zmax     = 10.0 * np.log10(y_max + 1e-12) + 10
         
