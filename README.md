@@ -7,18 +7,22 @@
 
 
 
-## Getting starting
+## Getting started
 
 Install anaconda at https://anaconda.org/
 
 
-Once installed, navigate directory of this repository in a command terminal, and run the following command to create the Anaconda environment for this project and to download the necessary packages. 
+Once installed, navigate directory of this repository in a command terminal, and run the following command to create the Anaconda environment for this project and to download the necessary packages:
 
-```conda env create -f environment.yaml```
+```
+conda env create -f environment.yaml
+```
 
 Once installed, run the following command to activate the environment:
 
-```conda activate rfsoc```
+```
+conda activate rfsoc
+```
 
 
 Run the following command to start hosting the web application locally on your computer:
