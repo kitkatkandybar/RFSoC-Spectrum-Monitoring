@@ -12,4 +12,5 @@ dependencies:
   - ipywidgets
   - matplotlib
   - scipy
+  - redis
 prefix: C:\Users\yanag\.conda\envs\rfsoc
