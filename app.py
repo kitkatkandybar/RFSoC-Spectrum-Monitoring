@@ -70,10 +70,12 @@ app.layout = html.Div(children=[
     html.Button('Choose input directory', id='input-dir-val', n_clicks=0),
     html.Br(),
     html.Div(id='drf-err'),
-    html.Div(id='channel-div'),
-    html.Div(id='sample-div'),
-    html.Div(id='bins-div'),
+    html.Div(id='channel-div', style={'width': 400}),
+    html.Div(id='sample-div', style={'width': 400},),
+            
+    html.Div(id='bins-div', style={'width': 400},),
     html.Div(id='metadata-output'),
+    html.Button('Load Data', id='load-val', n_clicks=0, disabled=True),
     html.Button(
         'Playback data from beginning', 
         id='reset-val',
@@ -171,6 +173,15 @@ def update_drf_data(n_clicks, drf_path, channel, sample_range, bins):
 
     return len(spec_datas['data']), None
 
+@app.callback(
+    dash.Output(component_id='load-val', component_property='disabled'),
+    dash.Input('input-dir-val', 'n_clicks'),
+)
+def update_load_data_button(n):
+    if n < 1: return True
+
+    return False
+
 
 @app.callback(
     dash.Output(component_id='channel-div', component_property='children'),
@@ -193,9 +204,8 @@ def update_channel_picker(n, drf_path):
             options=picker_options,
             value=channels[0],
             id='channel-picker',
-            style={'width': 400},
         ),
-        html.Button('Load Data', id='load-val', n_clicks=0),
+        
 
 
     ]
@@ -211,7 +221,7 @@ def update_sample_slider(n):
     if n < 1: return None
 
     sample_min  = 0
-    sample_max  = 1000000
+    sample_max  = 1000001
     sample_step = 10000
 
     sample_start_default = 300000
@@ -226,7 +236,8 @@ def update_sample_slider(n):
             max=sample_max,
             step=sample_step,
             value=[sample_start_default, sample_stop_default],
-            marks={i: '{}'.format(i) for i in range(sample_min, sample_max, sample_mark_width)},
+            marks={i: '{}k'.format(int(i/1000)) for i in range(sample_min, sample_max, sample_mark_width)},
+
         )
 
     ]
@@ -255,7 +266,9 @@ def update_bins_slider(n):
             max = 10,
             step = None,
             value= 10,
-            marks= {i: '{}'.format(2 ** i) for i in range(8, 11)}
+            marks= {i: '{}'.format(2 ** i) for i in range(8, 11)},
+            included=False,
+
 
         )
     ]
