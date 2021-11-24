@@ -71,6 +71,8 @@ app.layout = html.Div(children=[
     html.Br(),
     html.Div(id='drf-err'),
     html.Div(id='channel-div'),
+    html.Div(id='sample-div'),
+    html.Div(id='bins-div'),
     html.Div(id='metadata-output'),
     html.Button(
         'Playback data from beginning', 
@@ -114,8 +116,10 @@ app.layout = html.Div(children=[
     dash.Input('load-val', 'n_clicks'),
     dash.State('drf-path', 'value'),
     dash.State('channel-picker', 'value'),
+    dash.State('range-slider', 'value'),
+    dash.State('bins-slider', 'value'),
 )
-def update_drf_data(n_clicks, drf_path, channel):
+def update_drf_data(n_clicks, drf_path, channel, sample_range, bins):
     """
     Load metadata for Digital RF file when "load data" button is clicked,
     update the "max intervals" component with the length of the data, 
@@ -131,8 +135,8 @@ def update_drf_data(n_clicks, drf_path, channel):
 
     try:
         spec_datas = read_digital_rf_data([drf_path], plot_file=None, plot_type="spectrum", channel=channel,
-            subchan=0, sfreq=0.0, cfreq=None, atime=0, start_sample=0, stop_sample=1000000, modulus=10000, integration=1, 
-            zscale=(0, 0), bins=1024, log_scale=False, detrend=False,msl_code_length=0,
+            subchan=0, sfreq=0.0, cfreq=None, atime=0, start_sample=sample_range[0], stop_sample=sample_range[1], modulus=10000, integration=1, 
+            zscale=(0, 0), bins=2**bins, log_scale=False, detrend=False,msl_code_length=0,
             msl_baud_length=0)
     except Exception as e:
         # output error message
@@ -187,7 +191,7 @@ def update_channel_picker(n, drf_path):
         html.H4("Choose the channel:"),
         dcc.Dropdown(
             options=picker_options,
-            value='',
+            value=channels[0],
             id='channel-picker',
             style={'width': 400},
         ),
@@ -198,6 +202,64 @@ def update_channel_picker(n, drf_path):
 
     return children
 
+
+@app.callback(
+    dash.Output(component_id='sample-div', component_property='children'),
+    dash.Input('input-dir-val', 'n_clicks'),
+)
+def update_sample_slider(n):
+    if n < 1: return None
+
+    sample_min  = 0
+    sample_max  = 1000000
+    sample_step = 10000
+
+    sample_start_default = 300000
+    sample_stop_default  = 700000
+    sample_mark_width    = 100000
+
+    children = [
+        html.H4('sample range:'),
+        dcc.RangeSlider(
+            id = "range-slider",
+            min=sample_min,
+            max=sample_max,
+            step=sample_step,
+            value=[sample_start_default, sample_stop_default],
+            marks={i: '{}'.format(i) for i in range(sample_min, sample_max, sample_mark_width)},
+        )
+
+    ]
+    return children
+
+@app.callback(
+    dash.Output(component_id='bins-div', component_property='children'),
+    dash.Input('input-dir-val', 'n_clicks'),
+)
+def update_bins_slider(n):
+    if n < 1: return None
+
+    sample_min  = 0
+    sample_max  = 1000000
+    sample_step = 10000
+
+    sample_start_default = 300000
+    sample_stop_default  = 700000
+    sample_mark_width    = 100000
+
+    children = [
+        html.H4(children='number of bins:'),
+        dcc.Slider(
+            id="bins-slider",
+            min = 8,
+            max = 10,
+            step = None,
+            value= 10,
+            marks= {i: '{}'.format(2 ** i) for i in range(8, 11)}
+
+        )
+    ]
+    return children
 
 
 @app.callback(

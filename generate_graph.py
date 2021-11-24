@@ -50,6 +50,7 @@ def generate_spectrum_analyzer_figure(id, fig, sample_min = 0, sample_max = 1000
             min = 8,
             max = 10,
             step = None,
+            value=10,
             marks= {i: '{}'.format(2 ** i) for i in range(8, 11)}
         )
     ])
