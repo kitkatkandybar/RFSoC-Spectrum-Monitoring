@@ -17,12 +17,12 @@ import pandas as pd
 import numpy as np
 
 from spectrum_analyzer import SpectrumAnalyzer
-from digital_rf_utils import read_digital_rf_data
+from digital_rf_utils import *
 
 
 
 # create a Dash app
-app = dash.Dash(__name__)
+app = dash.Dash(__name__, suppress_callback_exceptions=True)
 
 
 # create radio option components
@@ -35,20 +35,12 @@ radio = html.Div([
             ),
          html.Div(
         [
-            dcc.RadioItems(
-                options=[
-                    {
-                        "label": "On",
-                        "value": 'on',
-                        # "disabled": True,
-                    },
-                    {
-                        "label": "Off",
-                        "value": 'off',
-                        # "disabled": True,
 
-                    },
-                ],
+            dcc.RadioItems(
+                    options=[
+                        {'label': 'Log Scale', 'value': 'on'},
+                        {'label': 'Linear Scale', 'value': 'off'}
+                    ],
                 value='off',
                 id=f"radio-log-scale",
                 labelStyle={"verticalAlign": "middle"},
@@ -68,7 +60,6 @@ y_min      = None
 sa         = SpectrumAnalyzer()
 
 
-
 # specify the main layout of the application
 app.layout = html.Div(children=[
     html.H1(children='Spectrum Monitoring Dashboard'),
@@ -76,10 +67,15 @@ app.layout = html.Div(children=[
         id="drf-path", type="text",value="C:/Users/yanag/openradar/openradar_antennas_wb_hf/",
         style={'width': 400}
     ),
-    html.Button('Load Data', id='load-val', n_clicks=0),
+    html.Button('Choose input directory', id='input-dir-val', n_clicks=0),
     html.Br(),
     html.Div(id='drf-err'),
+    html.Div(id='channel-div', style={'width': 400}),
+    html.Div(id='sample-div', style={'width': 400},),
+            
+    html.Div(id='bins-div', style={'width': 400},),
     html.Div(id='metadata-output'),
+    html.Button('Load Data', id='load-val', n_clicks=0, disabled=True),
     html.Button(
         'Playback data from beginning', 
         id='reset-val',
@@ -121,8 +117,11 @@ app.layout = html.Div(children=[
     dash.Output('drf-err', 'children'),
     dash.Input('load-val', 'n_clicks'),
     dash.State('drf-path', 'value'),
+    dash.State('channel-picker', 'value'),
+    dash.State('range-slider', 'value'),
+    dash.State('bins-slider', 'value'),
 )
-def update_drf_data(n_clicks, drf_path):
+def update_drf_data(n_clicks, drf_path, channel, sample_range, bins):
     """
     Load metadata for Digital RF file when "load data" button is clicked,
     update the "max intervals" component with the length of the data, 
@@ -137,9 +136,9 @@ def update_drf_data(n_clicks, drf_path):
         return 100, None
 
     try:
-        spec_datas = read_digital_rf_data([drf_path], plot_file=None, plot_type="spectrum", #channel="discone",
-            subchan=0, sfreq=0.0, cfreq=None, atime=0, start_sample=0, stop_sample=1000000, modulus=10000, integration=1, 
-            zscale=(0, 0), bins=1024, log_scale=False, detrend=False,msl_code_length=0,
+        spec_datas = read_digital_rf_data([drf_path], plot_file=None, plot_type="spectrum", channel=channel,
+            subchan=0, sfreq=0.0, cfreq=None, atime=0, start_sample=sample_range[0], stop_sample=sample_range[1], modulus=10000, integration=1, 
+            zscale=(0, 0), bins=2**bins, log_scale=False, detrend=False,msl_code_length=0,
             msl_baud_length=0)
     except Exception as e:
         # output error message
@@ -159,7 +158,7 @@ def update_drf_data(n_clicks, drf_path):
     y_min = min([min(d['data']) for d in spec_datas['data']])
 
     # set axes and other basic info for plots
-    sa.spec.yrange= (y_min, y_max)
+    sa.spec.yrange      = (y_min, y_max)
     sa.spectrogram.zmin = y_min
     sa.spectrogram.zmax = y_max
 
@@ -173,6 +172,107 @@ def update_drf_data(n_clicks, drf_path):
 
 
     return len(spec_datas['data']), None
+
+@app.callback(
+    dash.Output(component_id='load-val', component_property='disabled'),
+    dash.Input('input-dir-val', 'n_clicks'),
+)
+def update_load_data_button(n):
+    if n < 1: return True
+
+    return False
+
+
+@app.callback(
+    dash.Output(component_id='channel-div', component_property='children'),
+    dash.Input('input-dir-val', 'n_clicks'),
+    dash.State('drf-path', 'value'),
+
+)
+def update_channel_picker(n, drf_path):
+    if n < 1: return None
+
+    channels = get_drf_channels(drf_path)
+
+    picker_options = [
+        {'label': chan, 'value': chan} for chan in channels
+    ]
+
+    children = [
+        html.H4("Choose the channel:"),
+        dcc.Dropdown(
+            options=picker_options,
+            value=channels[0],
+            id='channel-picker',
+        ),
+        
+
+
+    ]
+
+    return children
+
+
+@app.callback(
+    dash.Output(component_id='sample-div', component_property='children'),
+    dash.Input('input-dir-val', 'n_clicks'),
+)
+def update_sample_slider(n):
+    if n < 1: return None
+
+    sample_min  = 0
+    sample_max  = 1000001
+    sample_step = 10000
+
+    sample_start_default = 300000
+    sample_stop_default  = 700000
+    sample_mark_width    = 100000
+
+    children = [
+        html.H4('sample range:'),
+        dcc.RangeSlider(
+            id = "range-slider",
+            min=sample_min,
+            max=sample_max,
+            step=sample_step,
+            value=[sample_start_default, sample_stop_default],
+            marks={i: '{}k'.format(int(i/1000)) for i in range(sample_min, sample_max, sample_mark_width)},
+
+        )
+
+    ]
+    return children
+
+@app.callback(
+    dash.Output(component_id='bins-div', component_property='children'),
+    dash.Input('input-dir-val', 'n_clicks'),
+)
+def update_bins_slider(n):
+    if n < 1: return None
+
+    sample_min  = 0
+    sample_max  = 1000000
+    sample_step = 10000
+
+    sample_start_default = 300000
+    sample_stop_default  = 700000
+    sample_mark_width    = 100000
+
+    children = [
+        html.H4(children='number of bins:'),
+        dcc.Slider(
+            id="bins-slider",
+            min = 8,
+            max = 10,
+            step = None,
+            value= 10,
+            marks= {i: '{}'.format(2 ** i) for i in range(8, 11)},
+            included=False,
+
+
+        )
+    ]
+    return children
 
 
 @app.callback(
