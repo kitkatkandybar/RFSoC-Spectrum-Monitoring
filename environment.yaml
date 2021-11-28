@@ -8,6 +8,7 @@ dependencies:
   - jupyter-dash
   - dash-core-components
   - dash-html-components
+  - dash-bootstrap-components
   - digital_rf
   - ipywidgets
   - matplotlib

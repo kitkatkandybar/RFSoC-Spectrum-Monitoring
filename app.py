@@ -16,13 +16,15 @@ import plotly.express as px
 import pandas as pd
 import numpy as np
 
+import dash_bootstrap_components as dbc
+
 from spectrum_analyzer import SpectrumAnalyzer
 from digital_rf_utils import *
 
 
 
 # create a Dash app
-app = dash.Dash(__name__, suppress_callback_exceptions=True)
+app = dash.Dash(__name__, external_stylesheets=[dbc.themes.MINTY], suppress_callback_exceptions=True)
 
 
 # create radio option components
@@ -61,54 +63,82 @@ sa         = SpectrumAnalyzer()
 
 
 # specify the main layout of the application
-app.layout = html.Div(children=[
-    html.H1(children='Spectrum Monitoring Dashboard'),
-    dcc.Input(
-        id="drf-path", type="text",value="C:/Users/yanag/openradar/openradar_antennas_wb_hf/",
-        style={'width': 400}
-    ),
-    html.Button('Choose input directory', id='input-dir-val', n_clicks=0),
-    html.Br(),
-    html.Div(id='drf-err'),
-    html.Div(id='channel-div', style={'width': 400}),
-    html.Div(id='sample-div', style={'width': 400},),
-            
-    html.Div(id='bins-div', style={'width': 400},),
-    html.Div(id='metadata-output'),
-    html.Button('Load Data', id='load-val', n_clicks=0, disabled=True),
-    html.Button(
-        'Playback data from beginning', 
-        id='reset-val',
-        n_clicks=0,
-        disabled=True,
-    ),
-    radio,
-
-    html.Div(
-        className="graph-section",
-        children=[
-            dcc.Graph(
-                id='spectrum-graph',
-                figure=sa.plot
-            ),
-            dcc.Interval(
-                    id='interval-component',
-                    interval=1*100, # in milliseconds
-                    n_intervals=0,
-                    max_intervals=100,
-                    disabled=True,
+app.layout = dbc.Container([
+    dbc.Row(
+        [
+        dbc.Col(
+            [
+                html.H1(children='Spectrum Monitoring Dashboard'),
+            ],
+            width=True,
+        ),
+    ]),
+    html.Hr(),
+    dbc.Row([
+        dbc.Col([
+                dcc.Input(
+                    id="drf-path", 
+                    type="text",
+                    value="C:/Users/yanag/openradar/openradar_antennas_wb_hf/",
+                    style={'width': '100%'}
                 ),
-            dcc.Graph(
-                id='specgram-graph',
-                figure=sa.spectrogram.get_plot()
+                dbc.Button(
+                    'Choose input directory', 
+                    id='input-dir-val', 
+                    n_clicks=0,
+                    color="primary",
+                ),
+                html.Br(),
+                html.Div(id='drf-err'),
+                html.Div(id='channel-div', style={'width': '100%'}),
+                html.Div(id='sample-div', style={'width': '100%'},),
+                        
+                html.Div(id='bins-div', style={'width': '100%'},),
+                html.Div(id='metadata-output'),
+                dbc.Button(
+                    'Load Data', 
+                    id='load-val', 
+                    n_clicks=0, 
+                    disabled=True,
+                    color="primary",
+                ),
+                dbc.Button(
+                    'Playback data from beginning', 
+                    id='reset-val',
+                    n_clicks=0,
+                    disabled=True,
+                    color="secondary",
+                ),
+                radio,
+        ], width=3),
+        dbc.Col([
+            html.Div(
+                className="graph-section",
+                children=[
+                    dcc.Graph(
+                        id='spectrum-graph',
+                        figure=sa.plot
+                    ),
+                    dcc.Interval(
+                            id='interval-component',
+                            interval=1*100, # in milliseconds
+                            n_intervals=0,
+                            max_intervals=100,
+                            disabled=True,
+                        ),
+                    dcc.Graph(
+                        id='specgram-graph',
+                        figure=sa.spectrogram.get_plot()
+                    ),
+                    html.P(id='placeholder', n_clicks=0)
+
+                ],
             ),
-            html.P(id='placeholder', n_clicks=0)
 
-        ],
-    )
+        ], width=True,),
+    ]),
 
-    
-])
+], fluid=True)
 
 
 
@@ -117,9 +147,9 @@ app.layout = html.Div(children=[
     dash.Output('drf-err', 'children'),
     dash.Input('load-val', 'n_clicks'),
     dash.State('drf-path', 'value'),
-    dash.State('channel-picker', 'value'),
-    dash.State('range-slider', 'value'),
-    dash.State('bins-slider', 'value'),
+    dash.State({'type': 'channel-picker', 'index': dash.ALL,}, 'value'),
+    dash.State({'type': 'range-slider', 'index': dash.ALL,}, 'value'),
+    dash.State({'type': 'bins-slider', 'index': dash.ALL,}, 'value'),
 )
 def update_drf_data(n_clicks, drf_path, channel, sample_range, bins):
     """
@@ -131,17 +161,18 @@ def update_drf_data(n_clicks, drf_path, channel, sample_range, bins):
     global spec_datas
 
     # clear spectrogram plot when reset is clicked
-    print(f"called update drf data, n: {n_clicks}")
+    print(f"called update drf data, n: {n_clicks}, chan: {channel}, samp range: {sample_range}")
     if n_clicks < 1:
         return 100, None
 
     try:
-        spec_datas = read_digital_rf_data([drf_path], plot_file=None, plot_type="spectrum", channel=channel,
-            subchan=0, sfreq=0.0, cfreq=None, atime=0, start_sample=sample_range[0], stop_sample=sample_range[1], modulus=10000, integration=1, 
-            zscale=(0, 0), bins=2**bins, log_scale=False, detrend=False,msl_code_length=0,
+        spec_datas = read_digital_rf_data([drf_path], plot_file=None, plot_type="spectrum", channel=channel[0],
+            subchan=0, sfreq=0.0, cfreq=None, atime=0, start_sample=sample_range[0][0], stop_sample=sample_range[0][1], modulus=10000, integration=1, 
+            zscale=(0, 0), bins=2**bins[0], log_scale=False, detrend=False,msl_code_length=0,
             msl_baud_length=0)
     except Exception as e:
         # output error message
+        print(e)
         return dash.no_update, str(e)
 
 
@@ -203,7 +234,10 @@ def update_channel_picker(n, drf_path):
         dcc.Dropdown(
             options=picker_options,
             value=channels[0],
-            id='channel-picker',
+            id={
+                'type': 'channel-picker', 'index': 0, 
+
+            }
         ),
         
 
@@ -226,12 +260,15 @@ def update_sample_slider(n):
 
     sample_start_default = 300000
     sample_stop_default  = 700000
-    sample_mark_width    = 100000
+    sample_mark_width    = 200000
 
     children = [
-        html.H4('sample range:'),
+        html.H4('Select the sample range:'),
         dcc.RangeSlider(
-            id = "range-slider",
+            id={
+                'type': 'range-slider', 'index': 0, 
+
+            },
             min=sample_min,
             max=sample_max,
             step=sample_step,
@@ -259,9 +296,12 @@ def update_bins_slider(n):
     sample_mark_width    = 100000
 
     children = [
-        html.H4(children='number of bins:'),
+        html.H4(children='Select the number of bins:'),
         dcc.Slider(
-            id="bins-slider",
+            id={
+                'type': 'bins-slider', 'index': 0, 
+
+            },
             min = 8,
             max = 10,
             step = None,
