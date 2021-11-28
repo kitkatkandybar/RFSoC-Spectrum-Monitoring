@@ -16,13 +16,15 @@ import plotly.express as px
 import pandas as pd
 import numpy as np
 
+import dash_bootstrap_components as dbc
+
 from spectrum_analyzer import SpectrumAnalyzer
 from digital_rf_utils import *
 
 
 
 # create a Dash app
-app = dash.Dash(__name__, suppress_callback_exceptions=True)
+app = dash.Dash(__name__, external_stylesheets=[dbc.themes.MINTY], suppress_callback_exceptions=True)
 
 
 # create radio option components
@@ -61,54 +63,82 @@ sa         = SpectrumAnalyzer()
 
 
 # specify the main layout of the application
-app.layout = html.Div(children=[
-    html.H1(children='Spectrum Monitoring Dashboard'),
-    dcc.Input(
-        id="drf-path", type="text",value="C:/Users/yanag/openradar/openradar_antennas_wb_hf/",
-        style={'width': 400}
-    ),
-    html.Button('Choose input directory', id='input-dir-val', n_clicks=0),
-    html.Br(),
-    html.Div(id='drf-err'),
-    html.Div(id='channel-div', style={'width': 400}),
-    html.Div(id='sample-div', style={'width': 400},),
-            
-    html.Div(id='bins-div', style={'width': 400},),
-    html.Div(id='metadata-output'),
-    html.Button('Load Data', id='load-val', n_clicks=0, disabled=True),
-    html.Button(
-        'Playback data from beginning', 
-        id='reset-val',
-        n_clicks=0,
-        disabled=True,
-    ),
-    radio,
-
-    html.Div(
-        className="graph-section",
-        children=[
-            dcc.Graph(
-                id='spectrum-graph',
-                figure=sa.plot
-            ),
-            dcc.Interval(
-                    id='interval-component',
-                    interval=1*100, # in milliseconds
-                    n_intervals=0,
-                    max_intervals=100,
-                    disabled=True,
+app.layout = dbc.Container([
+    dbc.Row(
+        [
+        dbc.Col(
+            [
+                html.H1(children='Spectrum Monitoring Dashboard'),
+            ],
+            width=True,
+        ),
+    ]),
+    html.Hr(),
+    dbc.Row([
+        dbc.Col([
+                dcc.Input(
+                    id="drf-path", 
+                    type="text",
+                    value="C:/Users/yanag/openradar/openradar_antennas_wb_hf/",
+                    style={'width': '100%'}
                 ),
-            dcc.Graph(
-                id='specgram-graph',
-                figure=sa.spectrogram.get_plot()
+                dbc.Button(
+                    'Choose input directory', 
+                    id='input-dir-val', 
+                    n_clicks=0,
+                    color="primary",
+                ),
+                html.Br(),
+                html.Div(id='drf-err'),
+                html.Div(id='channel-div', style={'width': '100%'}),
+                html.Div(id='sample-div', style={'width': '100%'},),
+                        
+                html.Div(id='bins-div', style={'width': '100%'},),
+                html.Div(id='metadata-output'),
+                dbc.Button(
+                    'Load Data', 
+                    id='load-val', 
+                    n_clicks=0, 
+                    disabled=True,
+                    color="primary",
+                ),
+                dbc.Button(
+                    'Playback data from beginning', 
+                    id='reset-val',
+                    n_clicks=0,
+                    disabled=True,
+                    color="secondary",
+                ),
+                radio,
+        ], width=3),
+        dbc.Col([
+            html.Div(
+                className="graph-section",
+                children=[
+                    dcc.Graph(
+                        id='spectrum-graph',
+                        figure=sa.plot
+                    ),
+                    dcc.Interval(
+                            id='interval-component',
+                            interval=1*100, # in milliseconds
+                            n_intervals=0,
+                            max_intervals=100,
+                            disabled=True,
+                        ),
+                    dcc.Graph(
+                        id='specgram-graph',
+                        figure=sa.spectrogram.get_plot()
+                    ),
+                    html.P(id='placeholder', n_clicks=0)
+
+                ],
             ),
-            html.P(id='placeholder', n_clicks=0)
 
-        ],
-    )
+        ], width=True,),
+    ]),
 
-    
-])
+], fluid=True)
 
 
 
@@ -229,7 +259,7 @@ def update_sample_slider(n):
     sample_mark_width    = 100000
 
     children = [
-        html.H4('sample range:'),
+        html.H4('Select the sample range:'),
         dcc.RangeSlider(
             id = "range-slider",
             min=sample_min,
@@ -259,7 +289,7 @@ def update_bins_slider(n):
     sample_mark_width    = 100000
 
     children = [
-        html.H4(children='number of bins:'),
+        html.H4(children='Select the number of bins:'),
         dcc.Slider(
             id="bins-slider",
             min = 8,
