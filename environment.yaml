@@ -8,8 +8,10 @@ dependencies:
   - jupyter-dash
   - dash-core-components
   - dash-html-components
+  - dash-bootstrap-components
   - digital_rf
   - ipywidgets
   - matplotlib
   - scipy
+  - redis
 prefix: C:\Users\yanag\.conda\envs\rfsoc

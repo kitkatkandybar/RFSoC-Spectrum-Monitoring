@@ -94,6 +94,16 @@ def spectrum_process(
 
 
 
+def get_drf_channels(input_file):
+    try:
+        drf = digital_rf.DigitalRFReader(input_file)
+        chans = drf.get_channels()
+        return chans
+    except:
+        print(("problem loading file %s" % f))
+        traceback.print_exc(file=sys.stdout)
+        raise
+
 
 def read_digital_rf_data(input_files, plot_file=None, plot_type="spectrum", channel="",
 		subchan=0, sfreq=0.0, cfreq=None, atime=0, start_sample=0, stop_sample=0, modulus=None, integration=1, 
