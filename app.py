@@ -69,6 +69,7 @@ radio = html.Div([
 spec_datas = None
 y_max      = None
 y_min      = None
+r_data     = None
 sa         = SpectrumAnalyzer()
 
 
@@ -95,6 +96,12 @@ app.layout = dbc.Container([
                 dbc.Button(
                     'Choose input directory', 
                     id='input-dir-val', 
+                    n_clicks=0,
+                    color="primary",
+                ),
+                dbc.Button(
+                    'redis', 
+                    id='redis-button', 
                     n_clicks=0,
                     color="primary",
                 ),
@@ -144,30 +151,78 @@ app.layout = dbc.Container([
 
                 ],
             ),
-            html.P(id='placeholder', n_clicks=0),
             dcc.Interval(
                     id='redis-interval',
-                    interval=5*1000, # in milliseconds
+                    interval=100, # in milliseconds
                     n_intervals=0,
                     max_intervals=1000,
-                    disabled=False,
+                    disabled=True,
                 ),
         ], width=True,),
     ]),
 
 ], fluid=True)
 
+@app.callback(
+    dash.Output(component_id='redis-interval', component_property='disabled'),
+    dash.Input('redis-button', 'n_clicks'),
+)
+def start_redis_stream(n):
+    if n > 0:
+        # get 
+        m = json.loads(redis_instance.get('metadata'))
+        print(f"got metadata: {m}")
+        global spec_datas
+        spec_datas = {}
+        spec_datas['metadata'] = m
+
+        sa.spectrogram.clear_data()
+
+        global y_min
+        global y_max
+        y_max = spec_datas['metadata']['y_max']
+        y_min = spec_datas['metadata']['y_min']
+
+        sfreq = m['sfreq']
+        n_samples = m['n_samples']
+
+        # set axes and other basic info for plots
+        sa.spec.yrange      = (y_min, y_max)
+        sa.spectrogram.zmin = y_min
+        sa.spectrogram.zmax = y_max
+
+        sa.centre_frequency = spec_datas['metadata']['cfreq']
+
+
+        sa.spec.sample_frequency        = sfreq
+        sa.spectrogram.sample_frequency = sfreq
+        sa.spec.number_samples          = n_samples
+        sa.spectrogram.number_samples   = n_samples
+        sa.spec.show_data()
+        return False # start polling data from redis stream
+
+    return True
+
 
 @app.callback(dash.Output('placeholder', 'n_clicks'),
               dash.Input('redis-interval', 'n_intervals'))
 def read_redis_stream(n_intervals):
+    if n_intervals == 0: return None
+
     streamname = 'example'
     # r = redis.Redis(host='localhost', port=6379, db=0)
-    print("reading redis stream?")
+    print("reading redis stream!")
     rstrm = redis_instance.xread({streamname: '$'}, None, 0)
     print("foo")
     xlist = json.loads(rstrm[0][1][0][1][b'data'])
-    print(f"data is: {xlist}")
+    # print(f"data is: {xlist}")
+
+    global r_data
+    r_data = xlist
+    
+    # sa.spec.data = xlist
+    # sa.spectrogram.data = xlist
+
 
     return None
 
@@ -209,11 +264,11 @@ def update_drf_data(n_clicks, drf_path, channel, sample_range, bins):
 
 
     # get metadata from redis
-    print("reading redis stream?")
-    rstrm = redis_instance.xread({streamname: '$'}, None, 0)
-    print("foo")
-    xlist = json.loads(rstrm[0][1][0][1][b'data'])
-    print(f"data is: {xlist}")
+    # print("reading redis stream?")
+    # rstrm = redis_instance.xread({streamname: '$'}, None, 0)
+    # print("foo")
+    # xlist = json.loads(rstrm[0][1][0][1][b'data'])
+    # print(f"data is: {xlist}")
 
 
 
@@ -434,8 +489,9 @@ def disabled_update(disabled):
 
 @app.callback(dash.Output('spectrum-graph', 'figure'),
               dash.Input('interval-component', 'n_intervals'),
+              dash.Input('placeholder', 'n_clicks'),
               dash.Input("radio-log-scale", "value"))
-def update_spectrum_graph(n, log_scale):
+def update_spectrum_graph(n, placeholder, log_scale):
     """ update the spectrum graph with new data, every time
     the Interval component fires"""
 
@@ -451,6 +507,13 @@ def update_spectrum_graph(n, log_scale):
             if log_scale == 'on':
                 d = 10.0 * np.log10(d + 1e-12)
             sa.spec.data        = d
+    elif prop_id == "placeholder":
+        print("updating spectrum graph using redis data")
+        d = np.asarray(r_data)
+        if log_scale == 'on':
+            d = 10.0 * np.log10(d + 1e-12)
+        print(f"redis data is : {d}")
+        sa.spec.data        = d
 
     else:
         # log scale option has been modified
@@ -469,8 +532,10 @@ def update_spectrum_graph(n, log_scale):
 
 @app.callback(dash.Output('specgram-graph', 'figure'),
               dash.Input('interval-component', 'n_intervals'),
+              dash.Input('placeholder', 'n_clicks'),
+
               dash.Input("radio-log-scale", "value"))
-def update_specgram_graph(n, log_scale):
+def update_specgram_graph(n, placeholder, log_scale):
     """ update the spectogram plot with new data, every time
     the Interval component fires"""
 
@@ -484,7 +549,14 @@ def update_specgram_graph(n, log_scale):
             d = spec_datas['data'][n]['data']
             if log_scale == 'on':
                 d = 10.0 * np.log10(d + 1e-12)
+
             sa.spectrogram.data = d
+    elif prop_id == "placeholder":
+        print("updating specgram graph using redis data")
+        d = np.asarray(r_data)
+        if log_scale == 'on':
+            d = 10.0 * np.log10(d + 1e-12)
+        sa.spectrogram.data = d
 
     else:
         if log_scale == 'on': # log scale option has changed

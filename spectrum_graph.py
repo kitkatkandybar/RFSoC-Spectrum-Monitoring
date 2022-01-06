@@ -303,7 +303,7 @@ class Spectrum():
     @data.setter
     def data(self, data):
         if self.enable_updates:
-            print("updating data")
+            print("Spectrum graph: updating data")
             data = self._apply_post_process(data)
             self._y_data_current = data
             self._y_data = self._y_data_current[self._lower_index:self._upper_index]
