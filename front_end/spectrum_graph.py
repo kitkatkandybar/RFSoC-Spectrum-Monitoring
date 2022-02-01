@@ -303,7 +303,6 @@ class Spectrum():
     @data.setter
     def data(self, data):
         if self.enable_updates:
-            print("Spectrum graph: updating data")
             data = self._apply_post_process(data)
             self._y_data_current = data
             self._y_data = self._y_data_current[self._lower_index:self._upper_index]
@@ -442,8 +441,6 @@ class Spectrum():
                                  self._upper_limit,
                                  self._rbw) + self._centre_frequency
         self._range = (min(self._x_data), max(self._x_data))
-        print(f'spectrum range: {self._range}, s freq: {self._sample_frequency}, dec factor: {self._decimation_factor} cent freq: {self._centre_frequency}')
-
 
         self._plot.layout.xaxis.range = self._range
         self.data_windowsize = self._data_window.shape[0]

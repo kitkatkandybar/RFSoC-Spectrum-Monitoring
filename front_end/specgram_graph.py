@@ -164,6 +164,8 @@ class Spectrogram():
     @data.setter
     def data(self, data):
         if self.enable_updates:
+            print("specgram_graph.py: updating data")
+
             self._data_status = True
             # value = np.fft.fftshift(data) # FFT Shift
 
@@ -318,7 +320,6 @@ class Spectrogram():
         self._plot.update_layout_images({'source' : img,
                                          'x' : self._image_x,
                                          'sizex' : (self._sample_frequency/self._decimation_factor)})
-        print(f'specgram range: {self._lower_limit}, {self._upper_limit}, s freq: {self._sample_frequency}, dec factor: {self._decimation_factor} cent freq: {self._centre_frequency}')
 
     def get_plot(self):
         return self._plot

@@ -49,13 +49,16 @@ def drf_requests_handler(msg):
             r.publish(f'responses:{req_id}:metadata', json.dumps(spec_datas['metadata']))
 
 
+            print(f"going to send {len(spec_datas['data'])} data points")
             for i in range(len(spec_datas['data'])):
                 d = spec_datas['data'][i]['data']
                 r.xadd(f'responses:{req_id}:stream', {'data': json.dumps(d.tolist())}, maxlen=1000)
-                print("Wrote to Redis")
+                if (i % 100 == 0):
+                    print(f"Wrote to Redis: {i}")
                 time.sleep(0.05)
             # send ending message
             r.xadd(f'responses:{req_id}:stream', {'data': json.dumps({'status': 'DONE'})}, maxlen=1000)
+            print('Sent last message')
             
 
 

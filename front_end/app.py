@@ -58,6 +58,8 @@ radio = html.Div([
 ])
 
 
+
+
 # specify some global data needed for various parts of the dashboard
 # TODO: Make these into non-global variables
 spec_datas = None
@@ -138,7 +140,7 @@ app.layout = dbc.Container([
                         figure=sa.plot
                     ),
                     dcc.Interval(
-                            id='interval-component',
+                            id='graph-interval',
                             interval=1*100, # in milliseconds
                             n_intervals=0,
                             # max_intervals=100,
@@ -165,7 +167,9 @@ app.layout = dbc.Container([
     html.Div(id='spectrum-graph-interval-placeholder', n_clicks=0,),
     html.Div(id='request-redis-interval-placeholder', n_clicks=0,),
     html.Div(id='reading-stream-redis-interval-placeholder', n_clicks=0,),
-
+    html.Div(id='reset-button-graph-interval-placeholder', n_clicks=0,),
+    html.Div(id='reset-button-placeholder', n_clicks=0,),
+    html.Div(id='graph_data_index', n_clicks=0,),
 
     
 
@@ -180,6 +184,11 @@ def drf_responses_handler(msg):
         drf_channels = json.loads(msg['data'])
         print(f'got channels from redis: {drf_channels}')
 
+def reset_graph_data():
+
+    global data_q_idx
+    data_q_idx = 0
+
 
 
 @app.callback(
@@ -190,14 +199,15 @@ def drf_responses_handler(msg):
 )
 def start_redis_stream(n, drf_path):
     # if (n % 2) == 1:
-    if n == 1:
+    print("clicked input dir button")
+    if n > 0:
         print("clicked redis button")
         global req_id
         req_id = redis_instance.get('request-id').decode()
         next_req_id = int(req_id) + 1
         redis_instance.set('request-id', next_req_id)
 
-        pubsub.psubscribe(f'responses:{req_id}:*')
+        pubsub.subscribe(f'responses:{req_id}:channels')
 
         print(f"publishing request {req_id} for {drf_path}")
         # make a request for the channels from drf_path
@@ -226,6 +236,8 @@ def start_redis_stream(n, drf_path):
                     ),
                  ]
 
+                pubsub.unsubscribe(f'responses:{req_id}:channels')
+
                 return children
 
 
@@ -249,11 +261,33 @@ def redis_update_load_data_button(n):
 
     return False
 
+@app.callback(
+    dash.Output(component_id='reset-val', component_property='disabled'),
+    dash.Input('load-val', 'n_clicks'),
+)
+def enable_replay_data_button(n):
+    if n < 1: return True
+
+
+
+    return False
+
+@app.callback(
+    dash.Output('reading-stream-graph-interval-placeholder', 'n_clicks'),
+    dash.Input('load-val', 'n_clicks'))
+def enable_graph_interval_after_clicking_load(n_clicks):
+    if n_clicks < 1:
+        return 0
+
+    return 1
+
+
 
 
 @app.callback(
     dash.Output('drf-err', 'children'),
-    dash.Output('request-redis-interval-placeholder', 'n_clicks'),
+    # dash.Output('request-redis-interval-placeholder', 'n_clicks'),
+    # dash.Output('reading-stream-graph-interval-placeholder', 'n_clicks'),
     dash.Input('load-val', 'n_clicks'),
     dash.State('drf-path', 'value'),
     dash.State({'type': 'channel-picker', 'index': dash.ALL,}, 'value'),
@@ -262,7 +296,16 @@ def redis_update_load_data_button(n):
 )
 def send_redis_request_data(n_clicks, drf_path, channel, sample_range, bins):
     if n_clicks < 1:
-         return None, dash.no_update
+        return None
+        # return None, dash.no_update
+
+    global req_id
+    req_id = redis_instance.get('request-id').decode()
+    next_req_id = int(req_id) + 1
+    redis_instance.set('request-id', next_req_id)
+
+    pubsub.psubscribe(f'responses:{req_id}:*')
+
     req = {
         'drf_path'     : drf_path,
         'channel'      : channel[0],
@@ -313,36 +356,25 @@ def send_redis_request_data(n_clicks, drf_path, channel, sample_range, bins):
             data_queue = []
             global data_q_idx
             data_q_idx = 0
-            return None, 1
+            break
+            # return None, 1
 
-
-    return None, 0
-
-
-
-@app.callback(
-    dash.Output('reading-stream-graph-interval-placeholder', 'n_clicks'),
-    dash.Output('reading-stream-redis-interval-placeholder', 'n_clicks'),
-    dash.Input('redis-interval', 'n_intervals'))
-def read_redis_stream(n_intervals):
-    if n_intervals == 0: return dash.no_update
-
-    print("reading redis stream!")
-    global last_r_id
-    global data_queue
-    print(f'last_r_id: {last_r_id}')
+    last_r_id = None
     finished = False
-    if last_r_id is None:
-        rstrm = redis_instance.xrange(f'responses:{req_id}:stream')
+    while not finished:
+        time.sleep(0.1)
+        if last_r_id is None:
+            rstrm = redis_instance.xrange(f'responses:{req_id}:stream')
+        else:
+            rstrm = redis_instance.xrange(f'responses:{req_id}:stream', min=f'({last_r_id}')
+
         if (len(rstrm) == 0):
             print("no update")
-            return dash.no_update, dash.no_update
+            continue
+            # return dash.no_update, dash.no_update
         
         last_r_id = rstrm[-1][0].decode()
-        print(f'last_r_id: {last_r_id}')
-
-        print(f"data is: {len(rstrm)}")
-
+        print(f"number of new data: {len(rstrm)}")
         for d in rstrm:
             datum = json.loads(d[1][b'data'])
             if 'status' in datum:
@@ -351,39 +383,80 @@ def read_redis_stream(n_intervals):
                     # unsubscribe from updates
                     finished = True
                     pubsub.punsubscribe(f'responses:{req_id}:*')
-                    return 1, 0 # enable graph interval, disable further redis streaming
+                    print(f"FINISHED READING ALL DATA FROM REQUEST: {req_id}")
+                    break
+                    # return 1, 0 # enable graph interval, disable further redis streaming
             else:
                 data_queue.append(datum)
 
-        return 1, dash.no_update # enable graph interval
+
+        # return 1, dash.no_update # enable graph interval
+
+    return None
+    # return None, 0
 
 
-    else:
-        rstrm = redis_instance.xrevrange(f'responses:{req_id}:stream', min=f'({last_r_id}')
-        if (len(rstrm) == 0):
-            print("no update")
-            return dash.no_update
-        last_r_id = rstrm[-1][0].decode()
 
-        print(f"data is: {len(rstrm)}")
+# @app.callback(
+#     dash.Output('reading-stream-graph-interval-placeholder', 'n_clicks'),
+#     dash.Output('reading-stream-redis-interval-placeholder', 'n_clicks'),
+#     dash.Input('redis-interval', 'n_intervals'))
+# def read_redis_stream(n_intervals):
+#     if n_intervals == 0: return dash.no_update
 
-        for d in rstrm:
-            datum = json.loads(d[1][b'data'])
-            if 'status' in datum:
-                # stream has finished
-                if datum['status'] == 'DONE':
-                    # unsubscribe from updates
-                    finished = True
+#     global last_r_id
+#     global data_queue
+#     finished = False
+#     if last_r_id is None:
+#         rstrm = redis_instance.xrange(f'responses:{req_id}:stream')
+#         if (len(rstrm) == 0):
+#             print("no update")
+#             return dash.no_update, dash.no_update
+        
+#         last_r_id = rstrm[-1][0].decode()
+#         print(f"number of new data: {len(rstrm)}")
+#         for d in rstrm:
+#             datum = json.loads(d[1][b'data'])
+#             if 'status' in datum:
+#                 # stream has finished
+#                 if datum['status'] == 'DONE':
+#                     # unsubscribe from updates
+#                     finished = True
+#                     pubsub.punsubscribe(f'responses:{req_id}:*')
+#                     print(f"FINISHED READING ALL DATA FROM REQUEST: {req_id}")
+#                     return 1, 0 # enable graph interval, disable further redis streaming
+#             else:
+#                 data_queue.append(datum)
 
-                    pubsub.punsubscribe(f'responses:{req_id}:*')
-                    return dash.no_update, 0 # enable graph interval, disable furthe redis streaming
+#         return 1, dash.no_update # enable graph interval
 
-            else:
-                data_queue.append(datum)
 
-        # data_queue.extend([json.loads(d[1][b'data']) for d in rstrm])
+#     else:
+#         rstrm = redis_instance.xrange(f'responses:{req_id}:stream', min=f'({last_r_id}')
+#         if (len(rstrm) == 0):
+#             print("no update")
+#             return dash.no_update
+#         last_r_id = rstrm[-1][0].decode()
+
+#         print(f"number of new data: {len(rstrm)}")
+
+#         for d in rstrm:
+#             datum = json.loads(d[1][b'data'])
+#             if 'status' in datum:
+#                 # stream has finished
+#                 if datum['status'] == 'DONE':
+#                     # unsubscribe from updates
+#                     finished = True
+#                     pubsub.punsubscribe(f'responses:{req_id}:*')
+#                     print(f"FINISHED READING ALL DATA FROM REQUEST: {req_id}")
+
+#                     return dash.no_update, 0 # enable graph interval, disable furthe redis streaming
+
+#             else:
+#                 data_queue.append(datum)
+
     
-        return dash.no_update, dash.no_update 
+#         return dash.no_update, dash.no_update 
 
 
 
@@ -457,8 +530,7 @@ def update_bins_slider(n):
 
 @app.callback(
     dash.Output(component_id='metadata-output', component_property='children'),
-    dash.Output(component_id='reset-val', component_property='disabled'),
-    dash.Input('interval-component', 'max_intervals'),
+    dash.Input('graph-interval', 'max_intervals'),
 )
 def update_metadeta_output(n):
     """
@@ -466,7 +538,7 @@ def update_metadeta_output(n):
     The 'max-intervals' value gets updated when metadata is loaded
     """
     if spec_datas is None:
-        return None, True
+        return None
 
     children = [
         html.H4("Metadata:"),
@@ -476,13 +548,13 @@ def update_metadeta_output(n):
 
     ]
     # return children, False
-    return children, True
+    return children
 
 
 
 # @app.callback(
-#     dash.Output('interval-component', 'n_intervals'),
-#     dash.Input('interval-component', 'disabled'),
+#     dash.Output('graph-interval', 'n_intervals'),
+#     dash.Input('graph-interval', 'disabled'),
 # )
 # def disabled_update(disabled):
 #     """ reset data back to beginning every time "reset" button gets pressed """
@@ -493,13 +565,29 @@ def update_metadeta_output(n):
 
 #     return 0
 
+@app.callback(
+    dash.Output('reset-button-graph-interval-placeholder', 'n_clicks'),
+    dash.Input('reset-val', 'n_clicks'),
+)
+def handle_reset_button(n_clicks):
+    if n_clicks < 1:
+        return 0
+
+    global data_q_idx
+    data_q_idx = 0
+
+    sa.spectrogram.clear_data()
+
+    return 1
+
 
 @app.callback(
-    dash.Output('interval-component', 'disabled'),
+    dash.Output('graph-interval', 'disabled'),
     dash.Input('reading-stream-graph-interval-placeholder', 'n_clicks'),
     dash.Input('spectrum-graph-interval-placeholder', 'n_clicks'),
+    dash.Input('reset-button-graph-interval-placeholder', 'n_clicks'),
 )
-def update_graph_interval(reading_interval, spectrum_interval):
+def update_graph_interval(reading_interval, spectrum_interval, reset_button_interval):
     ctx = dash.callback_context
     if not ctx.triggered:
         return dash.no_update
@@ -513,7 +601,10 @@ def update_graph_interval(reading_interval, spectrum_interval):
     if prop_id == "spectrum-graph-interval-placeholder":
         disabled = not bool(spectrum_interval)
 
-    print(f'Interval (graph updating) component is disabled: {disabled}')
+    if prop_id == 'reset-button-graph-interval-placeholder':
+        disabled = not bool(reset_button_interval)
+
+    print(f'Graph interval component is disabled: {disabled}')
 
     return disabled
 
@@ -542,13 +633,27 @@ def update_redis_interval(req_interval, reading_interval):
     return disabled
 
 
+@app.callback(
+            dash.Output('spectrum-graph-interval-placeholder', 'n_clicks'),
+            dash.Output('graph_data_index', 'n_clicks'),
+            dash.Input('graph-interval', 'n_intervals'))
+def handle_graph_interval(n):
+    if n < 1: return dash.no_update, dash.no_update
+    global data_q_idx
+    if data_q_idx < len(data_queue):
+        data_q_idx += 1
+        return dash.no_update, data_q_idx-1
+    elif len(data_queue) > 0:
+        print("Reached the end of the data queue, disabling graph interval")
+        return 0, dash.no_update # disable future updates to graph
+
+    return dash.no_update, dash.no_update
 
 
 
 
 @app.callback(dash.Output('spectrum-graph', 'figure'),
-              dash.Output('spectrum-graph-interval-placeholder', 'n_clicks'),
-              dash.Input('interval-component', 'n_intervals'),
+              dash.Input('graph_data_index', 'n_clicks'),
               dash.Input("radio-log-scale", "value"))
 def update_spectrum_graph(n, log_scale):
     """ update the spectrum graph with new data, every time
@@ -556,25 +661,20 @@ def update_spectrum_graph(n, log_scale):
 
     ctx = dash.callback_context
     if not ctx.triggered or not spec_datas:
-        return sa.plot, 0
+        return sa.plot
 
     prop_id = ctx.triggered[0]['prop_id'].split('.')[0]
-    if prop_id == "interval-component": # intervale component has fired
-        global data_q_idx
-
-        print("updating spectrum graph using redis data")
-        if data_q_idx < len(data_queue):
-            d = np.asarray(data_queue[data_q_idx])
+    print("called update spectrum graph")
+    if prop_id == "graph_data_index": # interval component has fired
+        if n < len(data_queue):
+            d = np.asarray(data_queue[n])
             if log_scale == 'on':
                 d = 10.0 * np.log10(d + 1e-12)
-            print(f"redis data is : {d}")
             sa.spec.data        = d
-            data_q_idx += 1
-            return sa.plot, dash.no_update
-        elif len(data_queue) > 0:
-            return dash.no_update, 0 # disable the interval from firing 
+            return sa.plot
         else:
-            return dash.no_update, dash.no_update # disable the interval from firing 
+            print(f"update_spectrum_graph: gone past the length of the data queue? data_queue len: {len(data_queue)}, idx: {n}")
+            return dash.no_update
 
 
     else:
@@ -589,12 +689,15 @@ def update_spectrum_graph(n, log_scale):
             sa.spec.ylabel = "Amplitude" 
             sa.spec.yrange = (y_min, y_max)
 
-    return sa.plot, dash.no_update
+    return sa.plot
+
+
+
 
 
 
 @app.callback(dash.Output('specgram-graph', 'figure'),
-              dash.Input('interval-component', 'n_intervals'),
+              dash.Input('graph_data_index', 'n_clicks'),
               dash.Input("radio-log-scale", "value"))
 def update_specgram_graph(n, log_scale):
     """ update the spectogram plot with new data, every time
@@ -605,17 +708,17 @@ def update_specgram_graph(n, log_scale):
         return sa.spectrogram.get_plot()
 
     prop_id = ctx.triggered[0]['prop_id'].split('.')[0]
-    if prop_id == "interval-component": # interval component has fired
-        global data_q_idx
 
-        print("updating spectrum graph using redis data")
-        if data_q_idx < len(data_queue):
-            d = np.asarray(data_queue[data_q_idx])
+    if prop_id == "graph_data_index": # interval component has fired
+        print(f"update_specgram_graph: data_queue len: {len(data_queue)}, idx: {n}")
+
+        if n < len(data_queue):
+            d = np.asarray(data_queue[n])
             if log_scale == 'on':
                 d = 10.0 * np.log10(d + 1e-12)
 
             sa.spectrogram.data = d
-            data_q_idx += 1
+            return sa.spectrogram.get_plot()
         else:
             return dash.no_update
 

@@ -18,18 +18,30 @@ Once installed, navigate directory of this repository in a command terminal, and
 conda env create -f environment.yaml
 ```
 
-Once installed, run the following command to activate the environment:
+A Redis server is necessary to run this application. Redis requires a UNIX machine. Downloading and installation instructions can be found here: https://redis.io/download.
+
+
+To run the application, first start running redis in a terminal. This can be done with the command:
+```
+redis-server
+```
+
+Run the back end in another terminal. This can by navigating to the location of the repository and running the following steps:
 
 ```
 conda activate rfsoc
+python ./back_end/redis_back_end.py
+```
+
+The first line activates the Anaconda environment we created earlier. 
+
+
+
+Run the front end in a third terminal by navigating to the location of the repository and running the following steps:
+```
+conda activate rfsoc
+python ./front_end/app.py
 ```
 
 
-Run the following command to start hosting the web application locally on your computer:
-
-```
-python ./app.py
-```
-
-
-Then open the application in a web browser at http://127.0.0.1:8050/ .
+Finally, open the application in a web browser at http://127.0.0.1:8050/ .
