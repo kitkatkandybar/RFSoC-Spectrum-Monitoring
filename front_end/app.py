@@ -65,10 +65,8 @@ radio = html.Div([
 spec_datas = None
 data_queue = None
 data_q_idx = 0
-# metadata   = None
-y_max      = None
-y_min      = None
-r_data     = None
+y_max      = 0
+y_min      = 0
 last_r_id  = None
 req_id     = None
 sa         = SpectrumAnalyzer()
@@ -163,9 +161,6 @@ app.layout = dbc.Container([
     html.Div(id='reset-button-graph-interval-placeholder', n_clicks=0,),
     html.Div(id='reset-button-placeholder', n_clicks=0,),
     html.Div(id='graph_data_index', n_clicks=0,),
-
-    
-
 
 ], fluid=True)
 
@@ -280,7 +275,6 @@ def enable_graph_interval_after_clicking_load(n_clicks):
 def send_redis_request_data(n_clicks, drf_path, channel, sample_range, bins):
     if n_clicks < 1:
         return None
-        # return None, dash.no_update
 
     global req_id
     req_id = redis_instance.get('request-id').decode()
@@ -340,7 +334,6 @@ def send_redis_request_data(n_clicks, drf_path, channel, sample_range, bins):
             global data_q_idx
             data_q_idx = 0
             break
-            # return None, 1
 
     last_r_id = None
     finished = False
@@ -354,7 +347,6 @@ def send_redis_request_data(n_clicks, drf_path, channel, sample_range, bins):
         if (len(rstrm) == 0):
             print("no update")
             continue
-            # return dash.no_update, dash.no_update
         
         last_r_id = rstrm[-1][0].decode()
         print(f"number of new data: {len(rstrm)}")
@@ -368,16 +360,13 @@ def send_redis_request_data(n_clicks, drf_path, channel, sample_range, bins):
                     pubsub.punsubscribe(f'responses:{req_id}:*')
                     print(f"FINISHED READING ALL DATA FROM REQUEST: {req_id}")
                     break
-                    # return 1, 0 # enable graph interval, disable further redis streaming
             else:
                 data_queue.append(datum)
 
-        stream_len = redis_instance.xlen(f'responses:{req_id}:stream')
-        print(f"LENGTH OF STREAM: {stream_len}")
-        # return 1, dash.no_update # enable graph interval
+    stream_len = redis_instance.xlen(f'responses:{req_id}:stream')
+    print(f"LENGTH OF STREAM: {stream_len}")
 
     return None
-    # return None, 0
 
 
 @app.callback(
@@ -470,23 +459,9 @@ def update_metadeta_output(n):
         html.P(f"Channel: {spec_datas['metadata']['channel']}"),
 
     ]
-    # return children, False
     return children
 
 
-
-# @app.callback(
-#     dash.Output('graph-interval', 'n_intervals'),
-#     dash.Input('graph-interval', 'disabled'),
-# )
-# def disabled_update(disabled):
-#     """ reset data back to beginning every time "reset" button gets pressed """
-
-#     if not disabled:
-#         # make sure data isn't hidden if playback is going on
-#         sa.spec.show_data()
-
-#     return 0
 
 @app.callback(
     dash.Output('reset-button-graph-interval-placeholder', 'n_clicks'),
@@ -551,6 +526,18 @@ def handle_graph_interval(n):
 
     raise dash.exceptions.PreventUpdate
 
+# @app.callback(
+#     dash.Output('graph_data_index', 'n_clicks'),
+# )
+# def handle_graph_update_loop(n):
+
+#     while data_q_idx < len(data_queue):
+#         data_q_idx += 1
+
+#         return data_q_idx-1
+
+#         time.sleep(0.1)
+
 
 @app.callback(dash.Output('spectrum-graph', 'figure'),
               dash.Input('graph_data_index', 'n_clicks'),
@@ -560,12 +547,22 @@ def update_spectrum_graph(n, log_scale):
     the Interval component fires"""
 
     ctx = dash.callback_context
-    if not ctx.triggered or not spec_datas:
+    if not ctx.triggered: # or not spec_datas:
         return sa.plot
 
     prop_id = ctx.triggered[0]['prop_id'].split('.')[0]
     print("called update spectrum graph")
     if prop_id == "graph_data_index": # interval component has fired
+        if n == 0:
+            if log_scale == 'on':
+                sa.spec.ylabel = "Amplitude (dB)" 
+                sa.spec.yrange = (10.0 * np.log10(y_min + 1e-12) - 3, 10.0 * np.log10(y_max + 1e-12) + 10)
+                sa.spec.data   =  10.0 * np.log10(sa.spec.data + 1e-12)  
+                
+            else:
+                sa.spec.ylabel = "Amplitude" 
+                sa.spec.yrange = (y_min, y_max)
+                
         if n < len(data_queue):
             d = np.asarray(data_queue[n])
             if log_scale == 'on':
@@ -600,8 +597,6 @@ def update_spectrum_graph(n, log_scale):
 def update_specgram_graph(n, log_scale):
     """ update the spectogram plot with new data, every time
     the Interval component fires"""
-    print("aaaaaaaaaaaaaaaa")
-
     ctx = dash.callback_context
     if not ctx.triggered or not spec_datas:
         return sa.spectrogram.get_plot()
@@ -610,6 +605,18 @@ def update_specgram_graph(n, log_scale):
 
     if prop_id == "graph_data_index": # interval component has fired
         print(f"update_specgram_graph: data_queue len: {len(data_queue)}, idx: {n}")
+
+        if n == 0:
+            if log_scale == 'on': # log scale option has changed
+                sa.spectrogram.zlabel =  "Power (dB)"
+                sa.spectrogram.zmin   = 10.0 * np.log10(y_min + 1e-12) - 3
+                sa.spectrogram.zmax   = 10.0 * np.log10(y_max + 1e-12) + 10
+                
+            else:
+                sa.spectrogram.zlabel = "Power"
+                sa.spectrogram.zmin   = y_min
+                sa.spectrogram.zmax   = y_max
+
 
         if n < len(data_queue):
             d = np.asarray(data_queue[n])
