@@ -30,6 +30,7 @@ def drf_requests_handler(msg):
         req_params = json.loads(msg['data'])
         print(f'got request for data: {req_params} ')
 
+        r.delete(f'responses:{req_id}:stream')
         try:
             spec_datas = read_digital_rf_data([req_params['drf_path']], plot_file=None, plot_type="spectrum", channel=req_params['channel'],
                 subchan=0, sfreq=0.0, cfreq=None, atime=0,
