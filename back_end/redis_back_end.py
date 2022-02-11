@@ -42,8 +42,8 @@ def drf_requests_handler(msg):
             y_max = max([max(d['data']) for d in spec_datas['data']])
             y_min = min([min(d['data']) for d in spec_datas['data']])
 
-            spec_datas['metadata']['y_max'] = y_max
-            spec_datas['metadata']['y_min'] = y_min
+            spec_datas['metadata']['y_max']      = y_max
+            spec_datas['metadata']['y_min']      = y_min
             spec_datas['metadata']['n_samples']  = spec_datas['data'][0]['data'].shape[0]
 
 
@@ -72,7 +72,6 @@ def drf_requests_handler(msg):
 
 def run_drf_stream():
     """Set ups a redis connection and updates data to the stream."""
-    streamname = 'example'
     
     # subscribe to all requests from the front end
     p.psubscribe(**{'requests:*': drf_requests_handler})
@@ -84,8 +83,48 @@ def run_drf_stream():
         time.sleep(.01)
     
 
+def run_mock_live_stream():
+
+    spec_datas = read_digital_rf_data(
+        ["C:/Users/yanag/openradar/openradar_antennas_wb_hf/"], plot_file=None, plot_type="spectrum", channel='discone',
+                subchan=0, sfreq=0.0, cfreq=None, atime=0,
+                start_sample=0, stop_sample=1000000, modulus=10000, integration=1, 
+                zscale=(0, 0), bins=1024, log_scale=False, detrend=False,msl_code_length=0,
+                msl_baud_length=0)
+
+    stream_name = "mock_stream1"
+
+    y_max = max([max(d['data']) for d in spec_datas['data']])
+    y_min = min([min(d['data']) for d in spec_datas['data']])
+    spec_datas['metadata']['y_max']      = y_max
+    spec_datas['metadata']['y_min']      = y_min
+
+
+    r.sadd("active_streams", stream_name)
+    r.hset(f"metadata:{stream_name}", mapping=spec_datas['metadata'])
+
+    try:
+        while True:
+            for i in range(len(spec_datas['data'])):
+                d = spec_datas['data'][i]['data']
+                r.xadd(f'stream:{stream_name}', {'data': json.dumps(d.tolist())}, maxlen=2000)
+                if (i % 100 == 0):
+                    print(f"Wrote to Redis: {i}")
+                time.sleep(0.05)
+    except KeyboardInterrupt:
+        print("Caught keyboard interrupt..")
+    finally:
+        print("Shutting down...")
+    
+        r.srem("active_streams", stream_name)
+        r.delete(f"metadata:{stream_name}")
+        r.delete(f"stream:{stream_name}")
+
+
+
 
 
 
 if __name__ == '__main__':
-    run_drf_stream()
+    # run_drf_stream()
+    run_mock_live_stream()

@@ -21,6 +21,8 @@ import redis
 
 from spectrum_analyzer import SpectrumAnalyzer
 
+from drf_sidebar_components import *
+
 
 
 # create a Dash app
@@ -28,35 +30,6 @@ app = dash.Dash(__name__, external_stylesheets=[dbc.themes.MINTY], suppress_call
 
 redis_instance = redis.Redis(host='localhost', port=6379, db=0)
 pubsub = redis_instance.pubsub(ignore_subscribe_messages=True)
-
-
-# create radio option components
-radio = html.Div([
-
-        html.P(
-                "Log Scale:",
-                style={"font-weight": "bold", "margin-bottom": "0px"},
-                className="plot-display-text",
-            ),
-         html.Div(
-        [
-
-            dcc.RadioItems(
-
-                    options=[
-                        {'label': 'Log Scale', 'value': 'on'},
-                        {'label': 'Linear Scale', 'value': 'off'}
-                    ],
-                value='off',
-                id=f"radio-log-scale",
-                labelStyle={"verticalAlign": "middle"},
-                className="plot-display-radio-items",
-            )
-        ],
-        className="radio-item-div",
-    )
-])
-
 
 
 
@@ -85,51 +58,13 @@ app.layout = dbc.Container([
         ),
     ]),
     html.Hr(),
+    dbc.Row(dcc.Tabs(id="content-tabs", value='content-tab-1', 
+        children=[
+            dcc.Tab(label='Digital RF', value='content-tab-1'),
+            dcc.Tab(label='Streaming', value='content-tab-2'),
+    ])),
     dbc.Row([
-        dbc.Col([
-                dcc.Input(
-                    id="drf-path", 
-                    type="text",
-                    value="C:/Users/yanag/openradar/openradar_antennas_wb_hf/",
-                    style={'width': '100%'}
-                ),
-                dbc.Button(
-                    'Choose input directory', 
-                    id='input-dir-button', 
-                    n_clicks=0,
-                    color="primary",
-                ),
-                html.Br(),
-                html.Div(id='drf-err'),
-                dcc.Loading(
-                    id="channel-loading",
-                    children=[
-                        html.Div(id='channel-div', style={'width': '100%'}),
-                        
-                    ],
-                    type="circle",
-                ),
-                
-                html.Div(id='sample-div', style={'width': '100%'},),
-                        
-                html.Div(id='bins-div', style={'width': '100%'},),
-                html.Div(id='metadata-output'),
-                dbc.Button(
-                    'Load Data', 
-                    id='load-val', 
-                    n_clicks=0, 
-                    disabled=True,
-                    color="primary",
-                ),
-                dbc.Button(
-                    'Playback data from beginning', 
-                    id='reset-val',
-                    n_clicks=0,
-                    disabled=True,
-                    color="secondary",
-                ),
-                radio,
-        ], width=3),
+        dbc.Col(html.Div(id='sidebar-content'), width=3),
         dbc.Col([
             html.Div(
                 className="graph-section",
@@ -165,10 +100,73 @@ app.layout = dbc.Container([
 ], fluid=True)
 
 
-def reset_graph_data():
+@app.callback(dash.Output('sidebar-content', 'children'),
+              dash.Input("content-tabs", 'value'))
+def render_tab_content(tab):
+    if tab == 'content-tab-1':
+        print("tab 1")
+        return drf_sidebar_components
+    elif tab == 'content-tab-2':
+        print("tab 2")
 
-    global data_q_idx
-    data_q_idx = 0
+        return stream_sidebar_components
+
+
+@app.callback(
+            dash.Output({'type': 'stream-picker', 'index': dash.ALL,}, 'options'),
+            dash.Input("content-tabs", 'value'))
+def get_active_streams(tab):
+    """
+    get the currently active streams from Redis when the streams tab is clicked
+    """
+    print("boop")
+    print('getting active streams?')
+    if tab == 'content-tab-2':
+        streams = redis_instance.smembers("active_streams")
+        print(f"GOT STREAMS: {streams}")
+        picker_options = [
+            {'label': s.decode(), 'value': s.decode()} for s in streams
+        ]
+
+        return [picker_options]
+
+
+    raise dash.exceptions.PreventUpdate
+
+@app.callback(
+            dash.Output('stream-metadata-div', 'children'),
+            dash.Input({'type': 'stream-picker', 'index': dash.ALL,}, 'value'))
+def update_stream_metadata(stream_names):
+    if not 'value':
+        raise dash.exceptions.PreventUpdate
+
+    print(f"Getting metadata for {stream_names[0]}")
+    metadata = redis_instance.hgetall(f"metadata:{stream_names[0]}")
+
+
+    if not metadata:
+        raise dash.exceptions.PreventUpdate
+
+    metadata = {k.decode(): v.decode() for k,v in metadata.items()}
+
+    global spec_datas
+    spec_datas = {}
+    spec_datas['metadata'] = metadata
+
+    print(f"got streaming metadata:\n{metadata}")
+
+
+    children = [
+        html.H4("Metadata:"),
+        html.P(f"Name: {stream_names[0]}"),
+        html.P(f"Sample Rate: {metadata['sfreq']} samples/second"),
+        html.P(f"Center Frequency: {metadata['cfreq']} Hz"),
+        html.P(f"Channel: {metadata['channel']}"),
+
+    ]
+    return children
+
+
 
 
 
@@ -185,9 +183,8 @@ def start_redis_stream(n, drf_path):
         print("clicked redis button")
         global req_id
         req_id = redis_instance.get('request-id').decode()
-        print('boop')
-        next_req_id = int(req_id) + 1
-        redis_instance.set('request-id', next_req_id)
+        redis_instance.incr('request-id')
+        
 
         pubsub.subscribe(f'responses:{req_id}:channels')
 
@@ -278,8 +275,7 @@ def send_redis_request_data(n_clicks, drf_path, channel, sample_range, bins):
 
     global req_id
     req_id = redis_instance.get('request-id').decode()
-    next_req_id = int(req_id) + 1
-    redis_instance.set('request-id', next_req_id)
+    redis_instance.incr('request-id')
 
     pubsub.psubscribe(f'responses:{req_id}:*')
 
