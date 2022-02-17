@@ -83,7 +83,7 @@ class Spectrogram():
 
 
         self._plot = go.FigureWidget(data=[dummy_trace], layout={
-            'height' : self._height,
+            'height': self._height,
             'width' : self._width,
             'yaxis' : {
                 'showgrid' : False,
@@ -94,11 +94,11 @@ class Spectrogram():
                 'visible' : True
             },
             'xaxis' : {
-                'zeroline': False,
-                'showgrid' : False,
-                'range' : [self._lower_limit, self._upper_limit],
+                'zeroline':   False,
+                'showgrid' :  False,
+                'range' :    [self._lower_limit, self._upper_limit],
                 'autorange' : False,
-                'title' : 'Frequency (Hz)',
+                'title' :    'Frequency (Hz)',
             },
             'margin' : {
                 't':25,
@@ -173,7 +173,7 @@ class Spectrogram():
             value = np.array(np.interp(value, (self.zmin, self.zmax), (0, 1)), dtype=np.single) # Scale Z-Axis
             value = np.resize(signal.resample(value, self._image_width), (1, self._image_width)) # Resample X-Axis
             value = np.repeat(value, self._ypixel, 0) # Repeat Y-Axis
-            cm = plt.get_cmap(self.cmap)
+            cm    = plt.get_cmap(self.cmap)
             value = cm(value)
             self._data = np.roll(self._data, self._ypixel, 0) # Roll data
             self._data[0:self._ypixel, :, :] = (value[:, :, :3]*255).astype(np.uint8) # Update first line

@@ -3,6 +3,7 @@ from dash import dcc
 from dash import html
 import dash_bootstrap_components as dbc
 
+
 # create radio option components
 drf_sidebar_radio = html.Div([
 
@@ -73,22 +74,4 @@ drf_sidebar_components = html.Div([
             color="secondary",
         ),
         drf_sidebar_radio,
-])
-
-
-stream_sidebar_components = html.Div([
-	html.Div(id='stream-picker-div', style={'width': '100%'},
-		children = [
-	        html.H4("Choose the stream:"),
-	        dcc.Dropdown(
-	            id={
-	                'type': 'stream-picker', 'index': 0, 
-
-	            }
-	        ),
-	    ]
-	),
-	html.Div(id='stream-metadata-div', style={'width': '100%'}),
-	html.Div(id='play-stream-div', style={'width': '100%'}),
-
 ])
