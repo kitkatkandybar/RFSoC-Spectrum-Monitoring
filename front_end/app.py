@@ -89,6 +89,21 @@ def serve_layout():
                                 # max_intervals=100,
                                 disabled=True,
                             ),
+                        dcc.Interval(
+                                id='stream-interval',
+                                interval=1000, # in milliseconds
+                                n_intervals=0,
+                                # max_intervals=100,
+                                disabled=True,
+                            ),
+                        dcc.Interval(
+                                id='stream-graph-interval',
+                                interval=1*150, # in milliseconds
+                                n_intervals=0,
+                                # max_intervals=100,
+                                disabled=True,
+                            ),
+                        
                         dcc.Graph(
                             id='specgram-graph',
                             figure=cfg.sa.spectrogram.get_plot()
@@ -108,7 +123,9 @@ def serve_layout():
         html.Div(id='spectrum-graph-interval-placeholder', n_clicks=0,),
         html.Div(id='reset-button-graph-interval-placeholder', n_clicks=0,),
         html.Div(id='reset-button-placeholder', n_clicks=0,),
-        html.Div(id='graph_data_index', n_clicks=0,),
+        dcc.Store(id='graph_data_index', data=0,),
+        dcc.Store(id='stream-last-id', data=-1,),
+        dcc.Store(id='stream-data'),
 
     ], fluid=True)
 
@@ -165,6 +182,7 @@ app.clientside_callback(
 def render_tab_content(tab):
     if tab == 'content-tab-1':
         print("tab 1")
+        # TODO: DISABLE ANY STREAMING COMPONENTS
         return drf_sidebar_components
     elif tab == 'content-tab-2':
         print("tab 2")
@@ -203,7 +221,7 @@ def update_graph_interval(reading_interval, spectrum_interval, reset_button_inte
 
 @app.callback(
             dash.Output('spectrum-graph-interval-placeholder', 'n_clicks'),
-            dash.Output('graph_data_index', 'n_clicks'),
+            dash.Output('graph_data_index', 'data'),
             dash.Input('graph-interval', 'n_intervals'))
 def handle_graph_interval(n):
     if n < 1: raise dash.exceptions.PreventUpdate
@@ -222,9 +240,11 @@ def handle_graph_interval(n):
 
 
 @app.callback(dash.Output('spectrum-graph', 'figure'),
-              dash.Input('graph_data_index', 'n_clicks'),
-              dash.Input("radio-log-scale", "value"))
-def update_spectrum_graph(n, log_scale):
+              dash.Input('graph_data_index', 'data'),
+              dash.Input('stream-data', 'data'),
+              dash.Input({'type': 'radio-log-scale', 'index': dash.ALL,}, 'value'),
+              )
+def update_spectrum_graph(n, stream_data, log_scale):
     """ update the spectrum graph with new data, every time
     the Interval component fires"""
 
@@ -254,12 +274,20 @@ def update_spectrum_graph(n, log_scale):
         else:
             print(f"update_spectrum_graph: gone past the length of the data queue? cfg.data_queue len: {len(cfg.data_queue)}, idx: {n}")
             raise dash.exceptions.PreventUpdate
-
+    elif prop_id == "stream-data":
+        cfg.sa.spec.show_data()
+        cfg.sa.spec.y_autorange = True
+        d = np.asarray(stream_data)
+        print(f'triggered update_spectrum_graph from stream-data, d: {d}')
+        if log_scale == 'on':
+            d = 10.0 * np.log10(d + 1e-12)
+        cfg.sa.spec.data        = d
+        return cfg.sa.plot
 
     else:
         # log scale option has been modified
         print("modifying log scale")
-        if log_scale == 'on':
+        if log_scale[0] == 'on':
             cfg.sa.spec.ylabel = "Amplitude (dB)" 
             cfg.sa.spec.yrange = (10.0 * np.log10(y_min + 1e-12) - 3, 10.0 * np.log10(y_max + 1e-12) + 10)
             cfg.sa.spec.data   =  10.0 * np.log10(cfg.sa.spec.data + 1e-12)  
@@ -275,8 +303,8 @@ def update_spectrum_graph(n, log_scale):
 
 
 @app.callback(dash.Output('specgram-graph', 'figure'),
-              dash.Input('graph_data_index', 'n_clicks'),
-              dash.Input("radio-log-scale", "value"))
+              dash.Input('graph_data_index', 'data'),
+              dash.Input({'type': 'radio-log-scale', 'index': dash.ALL,}, 'value'))
 def update_specgram_graph(n, log_scale):
     """ update the spectogram plot with new data, every time
     the Interval component fires"""
@@ -290,7 +318,7 @@ def update_specgram_graph(n, log_scale):
         print(f"update_specgram_graph: cfg.data_queue len: {len(cfg.data_queue)}, idx: {n}")
 
         if n == 0:
-            if log_scale == 'on': # log scale option has changed
+            if log_scale[0] == 'on': # log scale option has changed
                 cfg.sa.spectrogram.zlabel =  "Power (dB)"
                 cfg.sa.spectrogram.zmin   = 10.0 * np.log10(y_min + 1e-12) - 3
                 cfg.sa.spectrogram.zmax   = 10.0 * np.log10(y_max + 1e-12) + 10
@@ -313,7 +341,7 @@ def update_specgram_graph(n, log_scale):
             return dash.no_update
 
     else:
-        if log_scale == 'on': # log scale option has changed
+        if log_scale[0] == 'on': # log scale option has changed
             cfg.sa.spectrogram.zlabel =  "Power (dB)"
             cfg.sa.spectrogram.zmin   = 10.0 * np.log10(y_min + 1e-12) - 3
             cfg.sa.spectrogram.zmax   = 10.0 * np.log10(y_max + 1e-12) + 10

@@ -6,7 +6,6 @@ import time
 
 import json
 
-# from config import cfg.data_queue, cfg.data_q_idx, cfg.sa, cfg.spec_datas, cfg.redis_instance, cfg.pubsub
 import config as cfg
 
 

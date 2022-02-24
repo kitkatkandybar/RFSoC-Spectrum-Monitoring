@@ -126,5 +126,5 @@ def run_mock_live_stream():
 
 
 if __name__ == '__main__':
-    run_drf_stream()
-    # run_mock_live_stream()
+    # run_drf_stream()
+    run_mock_live_stream()

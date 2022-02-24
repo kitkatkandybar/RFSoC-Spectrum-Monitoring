@@ -3,7 +3,7 @@ from dash import dcc
 from dash import html
 import dash_bootstrap_components as dbc
 
-
+ 
 # create radio option components
 drf_sidebar_radio = html.Div([
 
@@ -22,7 +22,10 @@ drf_sidebar_radio = html.Div([
                         {'label': 'Linear Scale', 'value': 'off'}
                     ],
                 value='off',
-                id=f"radio-log-scale",
+                # id=f"radio-log-scale",
+                id={
+                    'type': 'radio-log-scale', 'index': 0, 
+                },
                 labelStyle={"verticalAlign": "middle"},
                 className="plot-display-radio-items",
             )

@@ -24,12 +24,12 @@ class Spectrum():
                  decimation_factor=2,
                  x_data=None):
     
-        self._y_data = plot_data
-        self._y_data_current = plot_data
-        self._sample_frequency = sample_frequency
-        self._number_samples = number_samples
+        self._y_data            = plot_data
+        self._y_data_current    = plot_data
+        self._sample_frequency  = sample_frequency
+        self._number_samples    = number_samples
         self._decimation_factor = decimation_factor
-        self._centre_frequency = centre_frequency
+        self._centre_frequency  = centre_frequency
         self._rbw = (self._sample_frequency/self._decimation_factor) \
             /self._number_samples
         self._upper_limit = (self._sample_frequency/self._decimation_factor)/2
@@ -60,6 +60,8 @@ class Spectrum():
         self.display_min          = False
         self.display_max          = False
         self.display_ddc_plan     = []
+
+        self._y_autorange         = False
         
         
         if (np.ceil(self._centre_frequency/(self._sample_frequency/2)) % 2) == 0:
@@ -79,7 +81,7 @@ class Spectrum():
             'yaxis' : {
                 'title' : self._ylabel,
                 'range' : self._yrange,
-                'autorange' : False,
+                'autorange' : self._y_autorange,
             },
             'margin' : {
                 't':25,
@@ -359,6 +361,14 @@ class Spectrum():
     @height.setter
     def height(self, height):
         self._plot.layout.height = height
+
+    @property
+    def y_autorange(self):
+        return self._y_autorange
+    
+    @y_autorange.setter
+    def y_autorange(self, autorange):
+        self._plot.layout.yaxis.autorange = autorange
     
 
     @property
@@ -447,7 +457,8 @@ class Spectrum():
 
         self._plot.data[1].update({
             'x':self._x_data,
-            'y':np.zeros(len(self._x_data)) + self._yrange[0] - 300
+            # 'y': np.zeros(len(self._x_data)) + self._yrange[0] - 300
+            'y': np.zeros(len(self._x_data)) - 300
         })
 
         if self.post_process == 'max':
