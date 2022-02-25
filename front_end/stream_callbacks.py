@@ -53,6 +53,16 @@ def update_stream_metadata(stream_names):
 
     print(f"got streaming metadata:\n{metadata}")
 
+    sfreq     = float(metadata['sfreq'])
+    n_samples = int(metadata['n_samples'])
+
+    cfg.sa.spec.centre_frequency        = float(metadata['cfreq'])
+    cfg.sa.spectrogram.centre_frequency = float(metadata['cfreq'])
+    cfg.sa.spec.sample_frequency        = sfreq
+    cfg.sa.spectrogram.sample_frequency = sfreq
+    cfg.sa.spec.number_samples          = n_samples
+    cfg.sa.spectrogram.number_samples   = n_samples
+
 
     children = [
         html.H4("Metadata:"),
@@ -107,19 +117,20 @@ def stream_data(n, stream_name, last_id):
         raise dash.exceptions.PreventUpdate
 
     name = stream_name[0]
-    print(f'CALLED STREAM_DATA, last id: {last_id}')
+    print(f'CALLED STREAM_DATA, last id: {cfg.stream_last_id}')
 
-    if last_id == -1:
-        rstrm = cfg.redis_instance.xrange(f'stream:{name}', min=f'{int(time.time() - 5)}')
+    if cfg.stream_last_id == -1:
+        rstrm = cfg.redis_instance.xrange(f'stream:{name}', min=f'{int(time.time() - 2)}')
     else:
-        rstrm = cfg.redis_instance.xrange(f'stream:{name}', min=f'({last_id}')
+        rstrm = cfg.redis_instance.xrange(f'stream:{name}', min=f'({cfg.stream_last_id}')
 
     if (len(rstrm) == 0):
         print("no update")
         raise dash.exceptions.PreventUpdate
     
     new_id = rstrm[-1][0].decode()
-    print(f"number of new data: {len(rstrm)}")
+    cfg.stream_last_id = new_id
+    print(f"number of new data: {len(rstrm)}, new_id: {new_id}")
     for d in rstrm:
         datum = json.loads(d[1][b'data'])
         cfg.stream_data_q.append(datum)
@@ -138,36 +149,22 @@ def get_next_data(n):
         raise dash.exceptions.PreventUpdate
         
 
-# @dash.callback(dash.Output('play-stream-interval', 'data'),
-#             dash.Output('pause-stream-graph-interval', 'disabled'),
-#             dash.Input({'type': 'play-stream-data', 'index': dash.ALL,}, 'n_clicks'), 
-#             prevent_initial_call=True)
-# def click_play_stream(n):
-#     if n == 0: return 'True', 'True'
-
-#     return 'False', 'False'
-
-# @dash.callback(dash.Output('pause-stream-interval', 'data'),
-#             dash.Output('pause-stream-graph-interval', 'disabled'),
-#             dash.Input({'type': 'pause-stream-data', 'index': dash.ALL,}, 'n_clicks'))
-# def click_pause_stream(n):
-
-#     return 'True', 'True'
-
 @dash.callback(
     dash.Output('stream-interval', 'disabled'),
     dash.Input({'type': 'play-stream-data', 'index': dash.ALL,}, 'n_clicks'),
     dash.Input({'type': 'pause-stream-data', 'index': dash.ALL,}, 'n_clicks'),
+    dash.Input("content-tabs", 'value'),
     prevent_initial_call=True
     )
-def handle_stream_interval(play_n, pause_n):
+def handle_stream_interval(play_n, pause_n, tab):
 
     ctx = dash.callback_context
 
     prop_id = ctx.triggered[0]['prop_id'].split('.')[0]
     print(f"handle_stream_interval: prop_id {prop_id}")
-    # if prop_id['type'] == 'play-stream-data':
-    if 'play' in prop_id and play_n[0] > 0:   
+    if 'play' in prop_id and play_n[0] > 0 and tab == 'content-tab-2':   
+        cfg.sa.spectrogram.clear_data()
+        cfg.stream_data_q.clear()
         return False
 
     return True
@@ -176,13 +173,15 @@ def handle_stream_interval(play_n, pause_n):
     dash.Output('stream-graph-interval', 'disabled'),
     dash.Input({'type': 'play-stream-data', 'index': dash.ALL,}, 'n_clicks'),
     dash.Input({'type': 'pause-stream-data', 'index': dash.ALL,}, 'n_clicks'),
+    dash.Input("content-tabs", 'value'),
+
     prevent_initial_call=True
     )
-def handle_graph_stream_interval(play_n, pause_n):
+def handle_graph_stream_interval(play_n, pause_n, tab):
     ctx = dash.callback_context
 
     prop_id = ctx.triggered[0]['prop_id'].split('.')[0]
-    if 'play' in prop_id and play_n[0] > 0:
+    if 'play' in prop_id and play_n[0] > 0 and tab == 'content-tab-2':
         return False
 
     return True

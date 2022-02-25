@@ -37,18 +37,18 @@ import config as cfg
 
 # create a Dash app
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.MINTY], suppress_callback_exceptions=True)
-cache = Cache(app.server, config={
-    'CACHE_TYPE': 'redis',
-    'CACHE_REDIS_URL': 'redis://localhost:6379',
-    # Note that filesystem cache doesn't work on systems with ephemeral
-    # filesystems like Heroku.
-    # 'CACHE_TYPE': 'filesystem',
-    'CACHE_DIR': 'cache-directory',
+# cache = Cache(app.server, config={
+#     'CACHE_TYPE': 'redis',
+#     'CACHE_REDIS_URL': 'redis://localhost:6379',
+#     # Note that filesystem cache doesn't work on systems with ephemeral
+#     # filesystems like Heroku.
+#     # 'CACHE_TYPE': 'filesystem',
+#     'CACHE_DIR': 'cache-directory',
 
-    # should be equal to maximum number of users on the app at a single time
-    # higher numbers will store more data in the filesystem / redis cache
-    'CACHE_THRESHOLD': 200
-})
+#     # should be equal to maximum number of users on the app at a single time
+#     # higher numbers will store more data in the filesystem / redis cache
+#     'CACHE_THRESHOLD': 200
+# })
 
 
 
@@ -132,49 +132,49 @@ def serve_layout():
 app.layout = serve_layout()
 
 
-def get_dataframe(session_id):
-    @cache.memoize()
-    def query_and_serialize_data(session_id):
-        # expensive or user/session-unique data processing step goes here
+# def get_dataframe(session_id):
+#     @cache.memoize()
+#     def query_and_serialize_data(session_id):
+#         # expensive or user/session-unique data processing step goes here
 
-        # simulate a user/session-unique data processing step by generating
-        # data that is dependent on time
-        now = datetime.datetime.now()
+#         # simulate a user/session-unique data processing step by generating
+#         # data that is dependent on time
+#         now = datetime.datetime.now()
 
-        # simulate an expensive data processing task by sleeping
-        time.sleep(3)
+#         # simulate an expensive data processing task by sleeping
+#         time.sleep(3)
 
-        df = pd.DataFrame({
-            'time': [
-                str(now - datetime.timedelta(seconds=15)),
-                str(now - datetime.timedelta(seconds=10)),
-                str(now - datetime.timedelta(seconds=5)),
-                str(now)
-            ],
-            'values': ['a', 'b', 'a', 'c']
-        })
-        return df.to_json()
+#         df = pd.DataFrame({
+#             'time': [
+#                 str(now - datetime.timedelta(seconds=15)),
+#                 str(now - datetime.timedelta(seconds=10)),
+#                 str(now - datetime.timedelta(seconds=5)),
+#                 str(now)
+#             ],
+#             'values': ['a', 'b', 'a', 'c']
+#         })
+#         return df.to_json()
 
-    return pd.read_json(query_and_serialize_data(session_id))
+#     return pd.read_json(query_and_serialize_data(session_id))
 
-def get_metadata(session_id, request_id):
-    @cache.memoize()
-    def query_and_serialize_metadata(session_id, request_id):
-        pass
+# def get_metadata(session_id, request_id):
+#     @cache.memoize()
+#     def query_and_serialize_metadata(session_id, request_id):
+#         pass
 
-    return json.loads(query_and_serialize_metadata(session_id, request_id))
+#     return json.loads(query_and_serialize_metadata(session_id, request_id))
 
 
-app.clientside_callback(
-    """
-    function(largeValue1, largeValue2) {
-        return someTransform(largeValue1, largeValue2);
-    }
-    """,
-    dash.Output('out-component', 'value'),
-    dash.Input('in-component1', 'value'),
-    dash.Input('in-component2', 'value')
-)
+# app.clientside_callback(
+#     """
+#     function(largeValue1, largeValue2) {
+#         return someTransform(largeValue1, largeValue2);
+#     }
+#     """,
+#     dash.Output('out-component', 'value'),
+#     dash.Input('in-component1', 'value'),
+#     dash.Input('in-component2', 'value')
+# )
 
 
 @app.callback(dash.Output('sidebar-content', 'children'),
@@ -256,18 +256,19 @@ def update_spectrum_graph(n, stream_data, log_scale):
     print("called update spectrum graph")
     if prop_id == "graph_data_index": # interval component has fired
         if n == 0:
-            if log_scale == 'on':
+            if log_scale[0] == 'on':
                 cfg.sa.spec.ylabel = "Amplitude (dB)" 
-                cfg.sa.spec.yrange = (10.0 * np.log10(y_min + 1e-12) - 3, 10.0 * np.log10(y_max + 1e-12) + 10)
+                cfg.sa.spec.yrange = (10.0 * np.log10(cfg.spec_datas['metadata']['y_min'] + 1e-12) - 3, 
+                                    10.0 * np.log10(cfg.spec_datas['metadata']['y_max'] + 1e-12) + 10)
                 cfg.sa.spec.data   =  10.0 * np.log10(cfg.sa.spec.data + 1e-12)  
                 
             else:
                 cfg.sa.spec.ylabel = "Amplitude" 
                 cfg.sa.spec.yrange = (cfg.spec_datas['metadata']['y_min'], cfg.spec_datas['metadata']['y_max'])
-                
+        cfg.sa.spec.y_autorange = False
         if n < len(cfg.data_queue):
             d = np.asarray(cfg.data_queue[n])
-            if log_scale == 'on':
+            if log_scale[0] == 'on':
                 d = 10.0 * np.log10(d + 1e-12)
             cfg.sa.spec.data        = d
             return cfg.sa.plot
@@ -276,26 +277,44 @@ def update_spectrum_graph(n, stream_data, log_scale):
             raise dash.exceptions.PreventUpdate
     elif prop_id == "stream-data":
         cfg.sa.spec.show_data()
-        cfg.sa.spec.y_autorange = True
+        cfg.sa.spec.y_autorange = False
         d = np.asarray(stream_data)
-        print(f'triggered update_spectrum_graph from stream-data, d: {d}')
-        if log_scale == 'on':
+        print(f"x range: {cfg.sa.spec._range}")
+        if log_scale[0] == 'on':
             d = 10.0 * np.log10(d + 1e-12)
         cfg.sa.spec.data        = d
         return cfg.sa.plot
 
     else:
         # log scale option has been modified
-        print("modifying log scale")
-        if log_scale[0] == 'on':
-            cfg.sa.spec.ylabel = "Amplitude (dB)" 
-            cfg.sa.spec.yrange = (10.0 * np.log10(y_min + 1e-12) - 3, 10.0 * np.log10(y_max + 1e-12) + 10)
-            cfg.sa.spec.data   =  10.0 * np.log10(cfg.sa.spec.data + 1e-12)  
-            
+        
+        y_min = float(cfg.spec_datas['metadata']['y_min']) if cfg.spec_datas else None
+        y_max = float(cfg.spec_datas['metadata']['y_max']) if cfg.spec_datas else None
+        print(f"modifying log scale, ymin: {y_min}, ymax: {y_max}")
+        if '0' in prop_id:
+            if log_scale and log_scale[0] == 'on':
+                cfg.sa.spec.ylabel = "Amplitude (dB)" 
+                cfg.sa.spec.yrange = (10.0 * np.log10(y_min + 1e-12) - 3, 
+                                      10.0 * np.log10(y_max + 1e-12) + 10)
+                cfg.sa.spec.data   =  10.0 * np.log10(cfg.sa.spec.data + 1e-12)  
+                
+            else:
+                cfg.sa.spec.ylabel = "Amplitude" 
+                if cfg.spec_datas:
+                    cfg.sa.spec.yrange = (cfg.spec_datas['metadata']['y_min'], cfg.spec_datas['metadata']['y_max'])
         else:
-            cfg.sa.spec.ylabel = "Amplitude" 
-            if cfg.spec_datas:
-                cfg.sa.spec.yrange = (cfg.spec_datas['metadata']['y_min'], cfg.spec_datas['metadata']['y_max'])
+            if log_scale and log_scale[0] == 'on':
+                cfg.sa.spec.ylabel = "Amplitude (dB)"
+                cfg.sa.spec.yrange = (10.0 * np.log10(y_min + 1e-12) - 3, 
+                                      10.0 * np.log10(y_max + 1e-12) + 10)
+                cfg.sa.spec.data   =  10.0 * np.log10(cfg.sa.spec.data + 1e-12)  
+            else:
+                cfg.sa.spec.ylabel = "Amplitude" 
+                if cfg.spec_datas:
+                    cfg.sa.spec.yrange = (y_min,y_max)
+        print(f"Changing yrange to : {cfg.sa.spec.yrange}")
+
+
 
     return cfg.sa.plot
 
@@ -304,8 +323,9 @@ def update_spectrum_graph(n, stream_data, log_scale):
 
 @app.callback(dash.Output('specgram-graph', 'figure'),
               dash.Input('graph_data_index', 'data'),
+              dash.Input('stream-data', 'data'),
               dash.Input({'type': 'radio-log-scale', 'index': dash.ALL,}, 'value'))
-def update_specgram_graph(n, log_scale):
+def update_specgram_graph(n, stream_data, log_scale):
     """ update the spectogram plot with new data, every time
     the Interval component fires"""
     ctx = dash.callback_context
@@ -317,11 +337,11 @@ def update_specgram_graph(n, log_scale):
     if prop_id == "graph_data_index": # interval component has fired
         print(f"update_specgram_graph: cfg.data_queue len: {len(cfg.data_queue)}, idx: {n}")
 
-        if n == 0:
+        if n == 1:
             if log_scale[0] == 'on': # log scale option has changed
                 cfg.sa.spectrogram.zlabel =  "Power (dB)"
-                cfg.sa.spectrogram.zmin   = 10.0 * np.log10(y_min + 1e-12) - 3
-                cfg.sa.spectrogram.zmax   = 10.0 * np.log10(y_max + 1e-12) + 10
+                cfg.sa.spectrogram.zmin   = 10.0 * np.log10(cfg.spec_datas['metadata']['y_min'] + 1e-12) - 3
+                cfg.sa.spectrogram.zmax   = 10.0 * np.log10(cfg.spec_datas['metadata']['y_max'] + 1e-12) + 10
                 
             else:
                 cfg.sa.spectrogram.zlabel = "Power"
@@ -332,25 +352,49 @@ def update_specgram_graph(n, log_scale):
 
         if n < len(cfg.data_queue):
             d = np.asarray(cfg.data_queue[n])
-            if log_scale == 'on':
+            if log_scale[0] == 'on':
                 d = 10.0 * np.log10(d + 1e-12)
 
             cfg.sa.spectrogram.data = d
             return cfg.sa.spectrogram.get_plot()
         else:
             return dash.no_update
-
-    else:
-        if log_scale[0] == 'on': # log scale option has changed
-            cfg.sa.spectrogram.zlabel =  "Power (dB)"
-            cfg.sa.spectrogram.zmin   = 10.0 * np.log10(y_min + 1e-12) - 3
-            cfg.sa.spectrogram.zmax   = 10.0 * np.log10(y_max + 1e-12) + 10
+    elif prop_id == "stream-data":
+        d = np.asarray(stream_data)
+        print(f"x range: {cfg.sa.spec._range}")
+        if log_scale[0] == 'on':
+            d = 10.0 * np.log10(d + 1e-12)
+        cfg.sa.spectrogram.data = d
+        return cfg.sa.spectrogram.get_plot()
+    # else:
+    #     if log_scale and log_scale[0] == 'on': # log scale option has changed
+    #         cfg.sa.spectrogram.zlabel =  "Power (dB)"
+    #         cfg.sa.spectrogram.zmin   = 10.0 * np.log10(cfg.spec_datas['metadata']['y_min']+ 1e-12) - 3
+    #         cfg.sa.spectrogram.zmax   = 10.0 * np.log10(cfg.spec_datas['metadata']['y_max'] + 1e-12) + 10
             
+    #     else:
+    #         cfg.sa.spectrogram.zlabel = "Power"
+    #         if cfg.spec_datas:
+    #             cfg.sa.spectrogram.zmin   = cfg.spec_datas['metadata']['y_min']
+    #             cfg.sa.spectrogram.zmax   = cfg.spec_datas['metadata']['y_max']
+    else:
+        # log scale option has been modified
+        if '0' in prop_id:
+            if log_scale and log_scale[0] == 'on':
+                cfg.sa.spectrogram.zlabel =  "Power (dB)"
+                cfg.sa.spectrogram.zmin   = 10.0 * np.log10(cfg.spec_datas['metadata']['y_min']+ 1e-12) - 3
+                cfg.sa.spectrogram.zmax   = 10.0 * np.log10(cfg.spec_datas['metadata']['y_max'] + 1e-12) + 10
+                
+            else:
+                cfg.sa.spectrogram.zlabel = "Power"
+                if cfg.spec_datas:
+                    cfg.sa.spectrogram.zmin   = float(cfg.spec_datas['metadata']['y_min'])
+                    cfg.sa.spectrogram.zmax   = float(cfg.spec_datas['metadata']['y_max'])
         else:
-            cfg.sa.spectrogram.zlabel = "Power"
-            if cfg.spec_datas:
-                spectrogram.zmin   = cfg.spec_datas['metadata']['y_min']
-                spectrogram.zmax   = cfg.spec_datas['metadata']['y_max']
+            if log_scale and log_scale[0] == 'on':
+                cfg.sa.spec.ylabel = "Power (dB)"
+            else:
+                cfg.sa.spec.ylabel = "Power" 
 
     return cfg.sa.spectrogram.get_plot()
 

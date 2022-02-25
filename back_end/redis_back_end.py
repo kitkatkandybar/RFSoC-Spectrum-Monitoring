@@ -6,6 +6,8 @@ import redis
 import numpy as np
 import json
 import time
+import argparse
+
 
 from digital_rf_utils import *
 
@@ -99,8 +101,11 @@ def run_mock_live_stream():
     spec_datas['metadata']['y_max']      = y_max
     spec_datas['metadata']['y_min']      = y_min
 
+    spec_datas['metadata']['n_samples']  = spec_datas['data'][0]['data'].shape[0]
+
 
     r.sadd("active_streams", stream_name)
+    
     r.hset(f"metadata:{stream_name}", mapping=spec_datas['metadata'])
 
     try:
@@ -126,5 +131,18 @@ def run_mock_live_stream():
 
 
 if __name__ == '__main__':
-    # run_drf_stream()
-    run_mock_live_stream()
+    parser = argparse.ArgumentParser(description='Process some integers.')
+    parser.add_argument('--type', type=str, nargs=1, default="drf",
+                        help='drf or mock_stream')
+
+    args = parser.parse_args()
+   
+    stream_type = args.type[0]
+
+
+    if stream_type == 'drf':
+        print("Running drf stream")
+        run_drf_stream()
+    elif stream_type == 'mock':
+        print("Running mock live stream")
+        run_mock_live_stream()
