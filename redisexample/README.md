@@ -26,3 +26,10 @@ First start a redis server in your first open terminal
  ```bash
  python clientexample.py
  ```
+
+The user can also run dash example instead by typing
+```bash
+python dashexample.py
+```
+
+And then going to their browser and typing in address stated in the terminal, usually [http://127.0.0.1:8050/](http://127.0.0.1:8050/).
