@@ -81,7 +81,8 @@ class Spectrum():
             'yaxis' : {
                 'title' : self._ylabel,
                 'range' : self._yrange,
-                'autorange' : self._y_autorange,
+                # 'autorange' : self._y_autorange,
+                'autorange' : False,
             },
             'margin' : {
                 't':25,
@@ -250,6 +251,7 @@ class Spectrum():
     
     @yrange.setter
     def yrange(self, yrange):
+        print(f"spectrum_graph: setting yrange to : {yrange}")
         self._yrange = yrange
         self._plot.layout.yaxis.range = self._yrange
         

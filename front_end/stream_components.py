@@ -16,7 +16,7 @@ stream_sidebar_components = html.Div([
 	        ),
 	    ]
 	),
-	html.Div(id='stream-metadata-div', style={'width': '100%'}),
+	html.Div(id={'type': 'stream-metadata-div', 'index': 0,}, style={'width': '100%'}),
 	html.Div(id='play-stream-div', style={'width': '100%'}),
 	html.Div(
         [

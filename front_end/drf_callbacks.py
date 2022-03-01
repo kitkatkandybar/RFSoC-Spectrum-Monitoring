@@ -148,44 +148,11 @@ def send_redis_request_data(n_clicks, drf_path, channel, sample_range, bins):
             cfg.sa.spectrogram.number_samples   = n_samples
             cfg.sa.spec.show_data()
 
-            # global cfg.data_queue
             cfg.data_queue = []
-            # global cfg.data_q_idx
             cfg.data_q_idx = 0
             return None, req_id
 
-    # last_r_id = None
-    # finished = False
-    # while not finished:
-    #     time.sleep(0.1)
-    #     if last_r_id is None:
-    #         rstrm = cfg.redis_instance.xrange(f'responses:{req_id}:stream')
-    #     else:
-    #         rstrm = cfg.redis_instance.xrange(f'responses:{req_id}:stream', min=f'({last_r_id}')
 
-    #     if (len(rstrm) == 0):
-    #         print("no update")
-    #         continue
-        
-    #     last_r_id = rstrm[-1][0].decode()
-    #     print(f"number of new data: {len(rstrm)}")
-    #     for d in rstrm:
-    #         datum = json.loads(d[1][b'data'])
-    #         if 'status' in datum:
-    #             # stream has finished
-    #             if datum['status'] == 'DONE':
-    #                 # unsubscribe from updates
-    #                 finished = True
-    #                 cfg.pubsub.punsubscribe(f'responses:{req_id}:*')
-    #                 print(f"FINISHED READING ALL DATA FROM REQUEST: {req_id}")
-    #                 break
-    #         else:
-    #             cfg.data_queue.append(datum)
-
-    # print(f"data queue len: {len(cfg.data_queue)}")
-
-    # stream_len = cfg.redis_instance.xlen(f'responses:{req_id}:stream')
-    # print(f"LENGTH OF STREAM: {stream_len}")
 
     return None
 
@@ -363,7 +330,6 @@ def handle_reset_button(n_clicks):
     if n_clicks < 1:
         return 0
 
-    # global cfg.data_q_idx
     cfg.data_q_idx = 0
 
     cfg.sa.spectrogram.clear_data()

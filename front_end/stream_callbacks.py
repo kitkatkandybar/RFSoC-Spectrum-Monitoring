@@ -33,7 +33,7 @@ def get_active_streams(tab):
 
 
 @dash.callback(
-            dash.Output('stream-metadata-div', 'children'),
+            dash.Output({'type': 'stream-metadata-div', 'index': 0,}, 'children'),
             dash.Input({'type': 'stream-picker', 'index': dash.ALL,}, 'value'))
 def update_stream_metadata(stream_names):
     if not 'value':
@@ -47,6 +47,8 @@ def update_stream_metadata(stream_names):
         raise dash.exceptions.PreventUpdate
 
     metadata = {k.decode(): v.decode() for k,v in metadata.items()}
+    metadata['y_max'] = float(metadata['y_max'] )
+    metadata['y_min'] = float(metadata['y_min'] )
 
     cfg.spec_datas = {}
     cfg.spec_datas['metadata'] = metadata
@@ -78,7 +80,8 @@ def update_stream_metadata(stream_names):
 
 @dash.callback(
             dash.Output('play-stream-div', 'children'),
-            dash.Input('stream-metadata-div', 'children'))
+            dash.Input({'type': 'stream-metadata-div', 'index': dash.ALL,}, 'children'),
+            )
 def display_play_stream_button(s):
     if not s:
         raise dash.exceptions.PreventUpdate
