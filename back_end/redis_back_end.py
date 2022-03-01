@@ -58,10 +58,10 @@ def drf_requests_handler(msg):
                 r.xadd(f'responses:{req_id}:stream', {'data': json.dumps(d.tolist())}, maxlen=1000)
                 if (i % 100 == 0):
                     print(f"Wrote to Redis: {i}")
-                time.sleep(0.05)
+                # time.sleep(0.05)
             # send ending message
             r.xadd(f'responses:{req_id}:stream', {'data': json.dumps({'status': 'DONE'})}, maxlen=1000)
-            print('Sent last message')
+            print(f'Sent last message for responses:{req_id}:stream')
             
 
 

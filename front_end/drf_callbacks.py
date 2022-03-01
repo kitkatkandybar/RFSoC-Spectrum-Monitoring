@@ -84,6 +84,7 @@ def update_bins_slider(n):
 
 @dash.callback(
     dash.Output('drf-err', 'children'),
+    dash.Output('request-id', 'data'),
     dash.Input('load-val', 'n_clicks'),
     dash.State('drf-path', 'value'),
     dash.State({'type': 'channel-picker', 'index': dash.ALL,}, 'value'),
@@ -92,10 +93,12 @@ def update_bins_slider(n):
 )
 def send_redis_request_data(n_clicks, drf_path, channel, sample_range, bins):
     if n_clicks < 1:
-        return None
+        return None, 0 
 
-    req_id = cfg.redis_instance.get('request-id').decode()
-    cfg.redis_instance.incr('request-id')
+    # req_id = cfg.redis_instance.get('request-id').decode()
+    req_id = cfg.redis_instance.incr('request-id')
+    print(f'REQ ID: {req_id}')
+
 
     cfg.pubsub.psubscribe(f'responses:{req_id}:*')
 
@@ -116,6 +119,8 @@ def send_redis_request_data(n_clicks, drf_path, channel, sample_range, bins):
         if 'metadata' in channel:
             metadata = json.loads(msg['data'])
             print(f'got metadata from redis: {metadata}')
+            cfg.redis_instance.set("last-drf-id", "0-0")
+
 
             # global cfg.spec_datas
             cfg.spec_datas = {}
@@ -147,42 +152,92 @@ def send_redis_request_data(n_clicks, drf_path, channel, sample_range, bins):
             cfg.data_queue = []
             # global cfg.data_q_idx
             cfg.data_q_idx = 0
-            break
+            return None, req_id
 
-    last_r_id = None
-    finished = False
-    while not finished:
-        time.sleep(0.1)
-        if last_r_id is None:
-            rstrm = cfg.redis_instance.xrange(f'responses:{req_id}:stream')
-        else:
-            rstrm = cfg.redis_instance.xrange(f'responses:{req_id}:stream', min=f'({last_r_id}')
+    # last_r_id = None
+    # finished = False
+    # while not finished:
+    #     time.sleep(0.1)
+    #     if last_r_id is None:
+    #         rstrm = cfg.redis_instance.xrange(f'responses:{req_id}:stream')
+    #     else:
+    #         rstrm = cfg.redis_instance.xrange(f'responses:{req_id}:stream', min=f'({last_r_id}')
 
-        if (len(rstrm) == 0):
-            print("no update")
-            continue
+    #     if (len(rstrm) == 0):
+    #         print("no update")
+    #         continue
         
-        last_r_id = rstrm[-1][0].decode()
-        print(f"number of new data: {len(rstrm)}")
-        for d in rstrm:
-            datum = json.loads(d[1][b'data'])
-            if 'status' in datum:
-                # stream has finished
-                if datum['status'] == 'DONE':
-                    # unsubscribe from updates
-                    finished = True
-                    cfg.pubsub.punsubscribe(f'responses:{req_id}:*')
-                    print(f"FINISHED READING ALL DATA FROM REQUEST: {req_id}")
-                    break
-            else:
-                cfg.data_queue.append(datum)
+    #     last_r_id = rstrm[-1][0].decode()
+    #     print(f"number of new data: {len(rstrm)}")
+    #     for d in rstrm:
+    #         datum = json.loads(d[1][b'data'])
+    #         if 'status' in datum:
+    #             # stream has finished
+    #             if datum['status'] == 'DONE':
+    #                 # unsubscribe from updates
+    #                 finished = True
+    #                 cfg.pubsub.punsubscribe(f'responses:{req_id}:*')
+    #                 print(f"FINISHED READING ALL DATA FROM REQUEST: {req_id}")
+    #                 break
+    #         else:
+    #             cfg.data_queue.append(datum)
 
-    print(f"data queue len: {len(cfg.data_queue)}")
+    # print(f"data queue len: {len(cfg.data_queue)}")
 
-    stream_len = cfg.redis_instance.xlen(f'responses:{req_id}:stream')
-    print(f"LENGTH OF STREAM: {stream_len}")
+    # stream_len = cfg.redis_instance.xlen(f'responses:{req_id}:stream')
+    # print(f"LENGTH OF STREAM: {stream_len}")
 
     return None
+
+
+@dash.callback(
+            dash.Output("drf-data-finished", 'data'),
+            dash.Output('drf-data', 'data'),
+            dash.Input('drf-interval', 'n_intervals'),
+            dash.State('request-id', 'data'),
+            prevent_initial_call=True)
+def get_next_drf_data(n, req_id):
+    last_r_id = cfg.redis_instance.get("last-drf-id").decode()
+
+    rstrm = cfg.redis_instance.xrange(f'responses:{req_id}:stream', min=f"({last_r_id}", count=1) 
+    if (len(rstrm) == 0):
+        print("no update")
+        raise dash.exceptions.PreventUpdate
+
+
+    new_r_id = rstrm[0][0].decode()
+    cfg.redis_instance.set("last-drf-id", new_r_id)
+
+    d = json.loads(rstrm[0][1][b'data'])
+    if 'status' in d and d['status'] == 'DONE':
+        # stream has finished
+        # unsubscribe from updates
+        cfg.pubsub.punsubscribe(f'responses:{req_id}:*')
+        print(f"FINISHED READING ALL DATA FROM REQUEST: {req_id}")
+        return "True", dash.no_update
+
+    return dash.no_update, d
+
+
+
+@dash.callback(
+    dash.Output('drf-interval', 'disabled'),
+    dash.Input('request-id', 'data'),
+    dash.Input("content-tabs", 'value'),
+    dash.Input("drf-data-finished", 'data'),
+    dash.State('load-val', 'n_clicks'),
+    prevent_initial_call=True
+    )
+def handle_drf_interval(req_id, tab, drf_finished, n):
+    ctx = dash.callback_context
+
+    prop_id = ctx.triggered[0]['prop_id'].split('.')[0]
+    if n > 0 and prop_id == "request-id" and req_id != -1 and tab == 'content-tab-1':
+        return False
+
+    return True
+
+
 
 
 
@@ -220,8 +275,9 @@ def start_redis_stream(n, drf_path):
     print("clicked input dir button")
     if n > 0:
         print("clicked redis button")
-        req_id = cfg.redis_instance.get('request-id').decode()
-        cfg.redis_instance.incr('request-id')
+        # req_id = cfg.redis_instance.get('request-id').decode()
+        req_id = cfg.redis_instance.incr('request-id')
+        print(f'REQ ID: {req_id}')
         
 
         cfg.pubsub.subscribe(f'responses:{req_id}:channels')

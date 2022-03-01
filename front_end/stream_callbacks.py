@@ -106,69 +106,23 @@ def display_play_stream_button(s):
     ]
     return children
 
-
-@dash.callback(dash.Output('stream-last-id', 'data'),
-            dash.Input('stream-interval', 'n_intervals'),
+@dash.callback(dash.Output('stream-data', 'data'),
+            dash.Input('stream-graph-interval', 'n_intervals'),
             dash.State({'type': 'stream-picker', 'index': dash.ALL,}, 'value'),
-            dash.State('stream-last-id', 'data'), prevent_initial_call=True)
-def stream_data(n, stream_name, last_id):
-    """ call this once a second to get redis data"""
-    if n < 1: 
-        raise dash.exceptions.PreventUpdate
-
+            prevent_initial_call=True)
+def get_next_data(n, stream_name):
     name = stream_name[0]
-    print(f'CALLED STREAM_DATA, last id: {cfg.stream_last_id}')
-
-    if cfg.stream_last_id == -1:
-        rstrm = cfg.redis_instance.xrange(f'stream:{name}', min=f'{int(time.time() - 2)}')
-    else:
-        rstrm = cfg.redis_instance.xrange(f'stream:{name}', min=f'({cfg.stream_last_id}')
+    # TODO: Make sure we don't get duplicates!
+    # get newest data point
+    rstrm = cfg.redis_instance.xrevrange(f'stream:{name}', count=1) 
 
     if (len(rstrm) == 0):
         print("no update")
         raise dash.exceptions.PreventUpdate
-    
-    new_id = rstrm[-1][0].decode()
-    cfg.stream_last_id = new_id
-    print(f"number of new data: {len(rstrm)}, new_id: {new_id}")
-    for d in rstrm:
-        datum = json.loads(d[1][b'data'])
-        cfg.stream_data_q.append(datum)
 
-    return new_id
-
-@dash.callback(dash.Output('stream-data', 'data'),
-            dash.Input('stream-graph-interval', 'n_intervals'), prevent_initial_call=True)
-def get_next_data(n):
-    print("popping data")
-    if cfg.stream_data_q:
-        datum = cfg.stream_data_q.pop()
-
-        return datum
-    else:
-        raise dash.exceptions.PreventUpdate
+    d = json.loads(rstrm[0][1][b'data'])
+    return d
         
-
-@dash.callback(
-    dash.Output('stream-interval', 'disabled'),
-    dash.Input({'type': 'play-stream-data', 'index': dash.ALL,}, 'n_clicks'),
-    dash.Input({'type': 'pause-stream-data', 'index': dash.ALL,}, 'n_clicks'),
-    dash.Input("content-tabs", 'value'),
-    prevent_initial_call=True
-    )
-def handle_stream_interval(play_n, pause_n, tab):
-
-    ctx = dash.callback_context
-
-    prop_id = ctx.triggered[0]['prop_id'].split('.')[0]
-    print(f"handle_stream_interval: prop_id {prop_id}")
-    if 'play' in prop_id and play_n[0] > 0 and tab == 'content-tab-2':   
-        cfg.sa.spectrogram.clear_data()
-        cfg.stream_data_q.clear()
-        return False
-
-    return True
-
 @dash.callback(
     dash.Output('stream-graph-interval', 'disabled'),
     dash.Input({'type': 'play-stream-data', 'index': dash.ALL,}, 'n_clicks'),

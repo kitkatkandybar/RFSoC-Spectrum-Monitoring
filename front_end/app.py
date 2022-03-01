@@ -86,21 +86,19 @@ def serve_layout():
                                 id='graph-interval',
                                 interval=1*150, # in milliseconds
                                 n_intervals=0,
-                                # max_intervals=100,
                                 disabled=True,
                             ),
                         dcc.Interval(
-                                id='stream-interval',
-                                interval=1000, # in milliseconds
-                                n_intervals=0,
-                                # max_intervals=100,
-                                disabled=True,
-                            ),
-                        dcc.Interval(
-                                id='stream-graph-interval',
+                                id='drf-interval',
                                 interval=1*150, # in milliseconds
                                 n_intervals=0,
-                                # max_intervals=100,
+                                disabled=True,
+                            ),
+                
+                        dcc.Interval(
+                                id='stream-graph-interval',
+                                interval=100, # in milliseconds
+                                n_intervals=0,
                                 disabled=True,
                             ),
                         
@@ -108,7 +106,6 @@ def serve_layout():
                             id='specgram-graph',
                             figure=cfg.sa.spectrogram.get_plot()
                         ),
-                        html.P(id='placeholder', n_clicks=0)
 
                     ],
                 ),
@@ -117,7 +114,7 @@ def serve_layout():
         ]),
         dcc.Store(data=session_id, id='session-id'),
         dcc.Store(id='metadata'),
-        dcc.Store(id='request-id'),
+        dcc.Store(id='request-id', data=-1),
         dcc.Store(id='spec-data'),
         html.Div(id='reading-stream-graph-interval-placeholder', n_clicks=0,),
         html.Div(id='spectrum-graph-interval-placeholder', n_clicks=0,),
@@ -126,6 +123,9 @@ def serve_layout():
         dcc.Store(id='graph_data_index', data=0,),
         dcc.Store(id='stream-last-id', data=-1,),
         dcc.Store(id='stream-data'),
+        dcc.Store(id='drf-data'),
+        dcc.Store(id='drf-drf_last_r_id', data=0),
+        dcc.Store(id='drf-data-finished', data="False"),
 
     ], fluid=True)
 
@@ -191,60 +191,55 @@ def render_tab_content(tab):
 
 
 
-@app.callback(
-    dash.Output('graph-interval', 'disabled'),
-    dash.Input('reading-stream-graph-interval-placeholder', 'n_clicks'),
-    dash.Input('spectrum-graph-interval-placeholder', 'n_clicks'),
-    dash.Input('reset-button-graph-interval-placeholder', 'n_clicks'),
-)
-def update_graph_interval(reading_interval, spectrum_interval, reset_button_interval):
-    ctx = dash.callback_context
-    if not ctx.triggered:
-        raise dash.exceptions.PreventUpdate
-    prop_id = ctx.triggered[0]['prop_id'].split('.')[0]
+# @app.callback(
+#     dash.Output('graph-interval', 'disabled'),
+#     dash.Input('spectrum-graph-interval-placeholder', 'n_clicks'),
+#     dash.Input('reset-button-graph-interval-placeholder', 'n_clicks'),
+# )
+# def update_graph_interval(spectrum_interval, reset_button_interval):
+#     ctx = dash.callback_context
+#     if not ctx.triggered:
+#         raise dash.exceptions.PreventUpdate
+#     prop_id = ctx.triggered[0]['prop_id'].split('.')[0]
 
-    if prop_id == "reading-stream-graph-interval-placeholder":
-        disabled = not bool(reading_interval)
-        if not disabled:
-            cfg.sa.spec.show_data()
+#     if prop_id == "spectrum-graph-interval-placeholder":
+#         disabled = not bool(spectrum_interval)
 
-    if prop_id == "spectrum-graph-interval-placeholder":
-        disabled = not bool(spectrum_interval)
+#     if prop_id == 'reset-button-graph-interval-placeholder':
+#         disabled = not bool(reset_button_interval)
 
-    if prop_id == 'reset-button-graph-interval-placeholder':
-        disabled = not bool(reset_button_interval)
+#     print(f'Graph interval component is disabled: {disabled}')
 
-    print(f'Graph interval component is disabled: {disabled}')
-
-    return disabled
+#     return disabled
 
 
-@app.callback(
-            dash.Output('spectrum-graph-interval-placeholder', 'n_clicks'),
-            dash.Output('graph_data_index', 'data'),
-            dash.Input('graph-interval', 'n_intervals'))
-def handle_graph_interval(n):
-    if n < 1: raise dash.exceptions.PreventUpdate
-    # global cfg.data_q_idx
-    print(f"handle_graph_interval: cfg.data_q_idx: {cfg.data_q_idx}, data queue len: {len(cfg.data_queue)}")
-    if cfg.data_q_idx < len(cfg.data_queue):
-        print(f"\tboop: cfg.data_q_idx: {cfg.data_q_idx}")
+# @app.callback(
+#             dash.Output('spectrum-graph-interval-placeholder', 'n_clicks'),
+#             dash.Output('graph_data_index', 'data'),
+#             dash.Input('graph-interval', 'n_intervals'))
+# def handle_graph_interval(n):
+#     if n < 1: raise dash.exceptions.PreventUpdate
+#     # global cfg.data_q_idx
+#     print(f"handle_graph_interval: cfg.data_q_idx: {cfg.data_q_idx}, data queue len: {len(cfg.data_queue)}")
+#     if cfg.data_q_idx < len(cfg.data_queue):
+#         print(f"\tboop: cfg.data_q_idx: {cfg.data_q_idx}")
 
-        cfg.data_q_idx += 1
-        return dash.no_update, cfg.data_q_idx-1
-    elif len(cfg.data_queue) > 0:
-        print("Reached the end of the data queue, disabling graph interval")
-        return 0, dash.no_update # disable future updates to graph
+#         cfg.data_q_idx += 1
+#         return dash.no_update, cfg.data_q_idx-1
+#     elif len(cfg.data_queue) > 0:
+#         print("Reached the end of the data queue, disabling graph interval")
+#         return 0, dash.no_update # disable future updates to graph
 
-    raise dash.exceptions.PreventUpdate
+#     raise dash.exceptions.PreventUpdate
 
 
 @app.callback(dash.Output('spectrum-graph', 'figure'),
               dash.Input('graph_data_index', 'data'),
               dash.Input('stream-data', 'data'),
+              dash.Input('drf-data', 'data'),
               dash.Input({'type': 'radio-log-scale', 'index': dash.ALL,}, 'value'),
               )
-def update_spectrum_graph(n, stream_data, log_scale):
+def update_spectrum_graph(n, stream_data, drf_data, log_scale):
     """ update the spectrum graph with new data, every time
     the Interval component fires"""
 
@@ -280,6 +275,12 @@ def update_spectrum_graph(n, stream_data, log_scale):
         cfg.sa.spec.y_autorange = False
         d = np.asarray(stream_data)
         print(f"x range: {cfg.sa.spec._range}")
+        if log_scale[0] == 'on':
+            d = 10.0 * np.log10(d + 1e-12)
+        cfg.sa.spec.data        = d
+        return cfg.sa.plot
+    elif prop_id == "drf-data":
+        d = np.asarray(drf_data)
         if log_scale[0] == 'on':
             d = 10.0 * np.log10(d + 1e-12)
         cfg.sa.spec.data        = d
@@ -324,8 +325,9 @@ def update_spectrum_graph(n, stream_data, log_scale):
 @app.callback(dash.Output('specgram-graph', 'figure'),
               dash.Input('graph_data_index', 'data'),
               dash.Input('stream-data', 'data'),
+              dash.Input('drf-data', 'data'),
               dash.Input({'type': 'radio-log-scale', 'index': dash.ALL,}, 'value'))
-def update_specgram_graph(n, stream_data, log_scale):
+def update_specgram_graph(n, stream_data, drf_data, log_scale):
     """ update the spectogram plot with new data, every time
     the Interval component fires"""
     ctx = dash.callback_context
@@ -366,6 +368,11 @@ def update_specgram_graph(n, stream_data, log_scale):
             d = 10.0 * np.log10(d + 1e-12)
         cfg.sa.spectrogram.data = d
         return cfg.sa.spectrogram.get_plot()
+    elif prop_id == "drf-data":
+        d = np.asarray(drf_data)
+        if log_scale[0] == 'on':
+            d = 10.0 * np.log10(d + 1e-12)
+        cfg.sa.spectrogram.data = d
     # else:
     #     if log_scale and log_scale[0] == 'on': # log scale option has changed
     #         cfg.sa.spectrogram.zlabel =  "Power (dB)"
