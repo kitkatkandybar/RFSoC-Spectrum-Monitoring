@@ -31,7 +31,6 @@ import drf_callbacks
 from stream_components import *
 import stream_callbacks
 
-# from config import cfg.data_queue, cfg.data_q_idx, cfg.sa, cfg.spec_datas, cfg.redis_instance, cfg.pubsub
 import config as cfg
 
 
@@ -69,21 +68,16 @@ def serve_layout():
                             figure=cfg.sa.plot
                         ),
                         dcc.Interval(
-                                id='graph-interval',
-                                interval=1*150, # in milliseconds
-                                n_intervals=0,
-                                disabled=True,
-                            ),
-                        dcc.Interval(
                                 id='drf-interval',
                                 interval=1*150, # in milliseconds
                                 n_intervals=0,
                                 disabled=True,
                             ),
+
                 
                         dcc.Interval(
                                 id='stream-graph-interval',
-                                interval=100, # in milliseconds
+                                interval=200, # in milliseconds
                                 n_intervals=0,
                                 disabled=True,
                             ),
@@ -99,18 +93,10 @@ def serve_layout():
             ], width=True,),
         ]),
         dcc.Store(data=session_id, id='session-id'),
-        dcc.Store(id='metadata'),
         dcc.Store(id='request-id', data=-1),
-        dcc.Store(id='spec-data'),
-        html.Div(id='reading-stream-graph-interval-placeholder', n_clicks=0,),
-        html.Div(id='spectrum-graph-interval-placeholder', n_clicks=0,),
-        html.Div(id='reset-button-graph-interval-placeholder', n_clicks=0,),
-        html.Div(id='reset-button-placeholder', n_clicks=0,),
         dcc.Store(id='graph_data_index', data=0,),
-        dcc.Store(id='stream-last-id', data=-1,),
         dcc.Store(id='stream-data'),
         dcc.Store(id='drf-data'),
-        dcc.Store(id='drf-drf_last_r_id', data=0),
         dcc.Store(id='drf-data-finished', data="False"),
 
     ], fluid=True)
@@ -121,6 +107,11 @@ app.layout = serve_layout()
 @app.callback(dash.Output('sidebar-content', 'children'),
               dash.Input("content-tabs", 'value'))
 def render_tab_content(tab):
+    cfg.sa.spectrogram.clear_data()
+    cfg.sa.spec.data        = []
+    if cfg.spec_datas:
+        cfg.spec_datas = {}
+
     if tab == 'content-tab-1':
         print("tab 1")
         # TODO: DISABLE ANY STREAMING COMPONENTS
@@ -154,7 +145,6 @@ def update_spectrum_graph(stream_data, drf_data, log_scale, stream_metadata):
         cfg.sa.spec.show_data()
         cfg.sa.spec.y_autorange = False
         d = np.asarray(stream_data)
-        print(f"x range: {cfg.sa.spec._range}")
         if log_scale[0] == 'on':
             d = 10.0 * np.log10(d + 1e-12)
         cfg.sa.spec.data        = d
@@ -209,7 +199,6 @@ def update_specgram_graph(stream_data, drf_data, log_scale, stream_metadata):
 
     if prop_id == "stream-data":
         d = np.asarray(stream_data)
-        print(f"x range: {cfg.sa.spec._range}")
         if log_scale[0] == 'on':
             d = 10.0 * np.log10(d + 1e-12)
         cfg.sa.spectrogram.data = d
@@ -224,8 +213,9 @@ def update_specgram_graph(stream_data, drf_data, log_scale, stream_metadata):
         # log scale option has been modified
         if log_scale and log_scale[0] == 'on':
             cfg.sa.spectrogram.zlabel =  "Power (dB)"
-            cfg.sa.spectrogram.zmin   = 10.0 * np.log10(cfg.spec_datas['metadata']['y_min']+ 1e-12) - 3
-            cfg.sa.spectrogram.zmax   = 10.0 * np.log10(cfg.spec_datas['metadata']['y_max'] + 1e-12) + 10
+            if cfg.spec_datas:
+                cfg.sa.spectrogram.zmin   = 10.0 * np.log10(cfg.spec_datas['metadata']['y_min']+ 1e-12) - 3
+                cfg.sa.spectrogram.zmax   = 10.0 * np.log10(cfg.spec_datas['metadata']['y_max'] + 1e-12) + 10
             
         else:
             cfg.sa.spectrogram.zlabel = "Power"

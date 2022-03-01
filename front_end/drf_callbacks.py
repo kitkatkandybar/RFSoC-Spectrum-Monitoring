@@ -85,14 +85,14 @@ def update_bins_slider(n):
 @dash.callback(
     dash.Output('drf-err', 'children'),
     dash.Output('request-id', 'data'),
-    dash.Input('load-val', 'n_clicks'),
+    dash.Input({'type': 'load-val', 'index': dash.ALL}, 'n_clicks'),
     dash.State('drf-path', 'value'),
     dash.State({'type': 'channel-picker', 'index': dash.ALL,}, 'value'),
     dash.State({'type': 'range-slider', 'index': dash.ALL,}, 'value'),
     dash.State({'type': 'bins-slider', 'index': dash.ALL,}, 'value'),
 )
 def send_redis_request_data(n_clicks, drf_path, channel, sample_range, bins):
-    if n_clicks < 1:
+    if not n_clicks or n_clicks[0] < 1:
         return None, 0 
 
     # req_id = cfg.redis_instance.get('request-id').decode()
@@ -148,8 +148,6 @@ def send_redis_request_data(n_clicks, drf_path, channel, sample_range, bins):
             cfg.sa.spectrogram.number_samples   = n_samples
             cfg.sa.spec.show_data()
 
-            cfg.data_queue = []
-            cfg.data_q_idx = 0
             return None, req_id
 
 
@@ -192,14 +190,15 @@ def get_next_drf_data(n, req_id):
     dash.Input('request-id', 'data'),
     dash.Input("content-tabs", 'value'),
     dash.Input("drf-data-finished", 'data'),
-    dash.State('load-val', 'n_clicks'),
+    dash.State({'type': 'load-val', 'index': dash.ALL}, 'n_clicks'),
+
     prevent_initial_call=True
     )
 def handle_drf_interval(req_id, tab, drf_finished, n):
     ctx = dash.callback_context
 
     prop_id = ctx.triggered[0]['prop_id'].split('.')[0]
-    if n > 0 and prop_id == "request-id" and req_id != -1 and tab == 'content-tab-1':
+    if n and n[0] > 0 and prop_id == "request-id" and req_id != -1 and tab == 'content-tab-1':
         return False
 
     return True
@@ -211,14 +210,20 @@ def handle_drf_interval(req_id, tab, drf_finished, n):
 
 @dash.callback(
     dash.Output(component_id='metadata-output', component_property='children'),
-    dash.Input('graph-interval', 'max_intervals'),
+    dash.Input('request-id', 'data'),
+    dash.Input("content-tabs", 'value'),
 )
-def update_metadeta_output(n):
+def update_metadeta_output(req_id, tab):
     """
     update metadata section when new Digital RF data is loaded
-    The 'max-intervals' value gets updated when metadata is loaded
+    The 'request-id' value gets updated when metadata is loaded
     """
-    if cfg.spec_datas is None:
+    if not cfg.spec_datas:
+        return None
+
+    ctx = dash.callback_context
+    prop_id = ctx.triggered[0]['prop_id'].split('.')[0]
+    if prop_id == "content-tabs":
         return None
 
     children = [
@@ -293,7 +298,7 @@ def start_redis_stream(n, drf_path):
 
 
 @dash.callback(
-    dash.Output(component_id='load-val', component_property='disabled'),
+    dash.Output({'type': 'load-val', 'index': 0}, 'disabled'),
     dash.Input('input-dir-button', 'n_clicks'),
 )
 def redis_update_load_data_button(n):
@@ -303,21 +308,12 @@ def redis_update_load_data_button(n):
 
 @dash.callback(
     dash.Output(component_id='reset-val', component_property='disabled'),
-    dash.Input('load-val', 'n_clicks'),
+    dash.Input({'type': 'load-val', 'index': dash.ALL,}, 'n_clicks'),
 )
 def enable_replay_data_button(n):
-    if n < 1: return True
+    if n and n[0] < 1: return True
 
     return False
-
-@dash.callback(
-    dash.Output('reading-stream-graph-interval-placeholder', 'n_clicks'),
-    dash.Input('load-val', 'n_clicks'))
-def enable_graph_interval_after_clicking_load(n_clicks):
-    if n_clicks < 1:
-        return 0
-
-    return 1
 
 
 
@@ -329,8 +325,6 @@ def enable_graph_interval_after_clicking_load(n_clicks):
 def handle_reset_button(n_clicks):
     if n_clicks < 1:
         return 0
-
-    cfg.data_q_idx = 0
 
     cfg.sa.spectrogram.clear_data()
 

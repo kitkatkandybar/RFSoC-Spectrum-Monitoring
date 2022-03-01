@@ -139,6 +139,7 @@ def handle_graph_stream_interval(play_n, pause_n, tab):
 
     prop_id = ctx.triggered[0]['prop_id'].split('.')[0]
     if 'play' in prop_id and play_n[0] > 0 and tab == 'content-tab-2':
+        cfg.sa.spectrogram.clear_data()
         return False
 
     return True

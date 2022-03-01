@@ -164,8 +164,6 @@ class Spectrogram():
     @data.setter
     def data(self, data):
         if self.enable_updates:
-            print("specgram_graph.py: updating data")
-
             self._data_status = True
             # value = np.fft.fftshift(data) # FFT Shift
 

@@ -64,7 +64,7 @@ drf_sidebar_components = html.Div([
         html.Div(id='metadata-output'),
         dbc.Button(
             'Load Data', 
-            id='load-val', 
+            id={'type': 'load-val', 'index': 0,},
             n_clicks=0, 
             disabled=True,
             color="primary",
