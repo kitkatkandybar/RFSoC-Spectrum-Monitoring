@@ -26,22 +26,18 @@ To run the application, first start running redis in a terminal. This can be don
 redis-server
 ```
 
-Run the back end in another terminal. This can by navigating to the location of the repository and running the following steps:
+The board has to be connected to a PC via USB and to the power. It also needs to be connected to the Internet: via a router or a computer with an Ethernet cable.
+To access the board and open JupyterLab, on the computer connected to the board browse to http://192.168.3.1/lab 
+Run the iPython Notebook called "simplestream.py"
 
-```
-conda activate rfsoc
-python ./back_end/redis_back_end.py
-```
-
-The first line activates the Anaconda environment we created earlier. 
+Make sure that the IP addresses of the receiver and the sender of the data (front_end/config.py and simplestream.py) match the IP of the device in which the redis-server is running
 
 
+Run the front end in another terminal by navigating to the location of the repository and running the following steps:
 
-Run the front end in a third terminal by navigating to the location of the repository and running the following steps:
 ```
 conda activate rfsoc
 python ./front_end/app.py
 ```
-
-
-Finally, open the application in a web browser at http://127.0.0.1:8050/ .
+The first line activates the Anaconda environment we created earlier. 
+The front end will read the data from the Redis stream and display it in the Dash web application, which can be accessed in a web browser at http://127.0.0.1:8050/
