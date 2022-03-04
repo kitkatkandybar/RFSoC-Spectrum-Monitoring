@@ -15,5 +15,5 @@ spec_datas = None
 stream_data_q = deque([], maxlen=10000)
 stream_last_id = -1
 
-redis_instance = redis.Redis(host='localhost', port=6379, db=0)
+redis_instance = redis.Redis(host='155.41.6.148', port=6379, db=0)
 pubsub = redis_instance.pubsub(ignore_subscribe_messages=True)

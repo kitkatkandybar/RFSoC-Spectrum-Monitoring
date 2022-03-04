@@ -122,7 +122,7 @@ def stream_data(n, stream_name, last_id):
     if cfg.stream_last_id == -1:
         rstrm = cfg.redis_instance.xrange(f'stream:{name}', min=f'{int(time.time() - 2)}')
     else:
-        rstrm = cfg.redis_instance.xrange(f'stream:{name}', min=f'({cfg.stream_last_id}')
+        rstrm = cfg.redis_instance.xrange(f'stream:{name}', min=f'{cfg.stream_last_id}')
 
     if (len(rstrm) == 0):
         print("no update")
