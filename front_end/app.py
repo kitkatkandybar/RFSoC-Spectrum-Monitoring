@@ -245,9 +245,5 @@ if __name__ == '__main__':
 
     # initialize redis instance based on cfg params
     cfg.redis_instance = redis.Redis(host=cfg_data['redis']['host'], port=cfg_data['redis']['port'], db=0)
-    cfg.pubsub         = cfg.redis_instance.pubsub(ignore_subscribe_messages=True)
-
-
-
 
     app.run_server(debug=True)

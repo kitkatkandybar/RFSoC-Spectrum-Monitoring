@@ -95,12 +95,9 @@ def send_redis_request_data(n_clicks, drf_path, channel, sample_range, bins):
     if not n_clicks or n_clicks[0] < 1:
         return None, 0 
 
-    # req_id = cfg.redis_instance.get('request-id').decode()
     req_id = cfg.redis_instance.incr('request-id')
     print(f'REQ ID: {req_id}')
 
-
-    cfg.pubsub.psubscribe(f'responses:{req_id}:*')
 
     req = {
         'drf_path'     : drf_path,
@@ -113,46 +110,48 @@ def send_redis_request_data(n_clicks, drf_path, channel, sample_range, bins):
 
     cfg.redis_instance.publish(f'requests:{req_id}:data', json.dumps(req))
 
-    for msg in cfg.pubsub.listen():
-        print(f"got response message: {msg}")
-        channel = msg['channel'].decode()
-        if 'metadata' in channel:
-            metadata = json.loads(msg['data'])
-            print(f'got metadata from redis: {metadata}')
-            cfg.redis_instance.set("last-drf-id", "0-0")
+
+    try:
+        rstrm = cfg.redis_instance.xread({f'responses:{req_id}:metadata'.encode(): '0-0'.encode()}, block=1000, count=1) 
+        print(f"received drf metadata:\n{rstrm}")
+
+    except:
+        return "drf timeout?", dash.no_update
+
+    cfg.redis_instance.delete(f'responses:{req_id}:metadata')
+
+    metadata = json.loads(rstrm[0][1][0][1][b'data'])
+    print(f'got metadata from redis: {metadata}')
+    cfg.redis_instance.set("last-drf-id", "0-0")
 
 
-            # global cfg.spec_datas
-            cfg.spec_datas = {}
-            cfg.spec_datas['metadata'] = metadata
+    # global cfg.spec_datas
+    cfg.spec_datas = {}
+    cfg.spec_datas['metadata'] = metadata
 
-            cfg.sa.spectrogram.clear_data()
+    cfg.sa.spectrogram.clear_data()
 
-            y_max     = cfg.spec_datas['metadata']['y_max']
-            y_min     = cfg.spec_datas['metadata']['y_min']
+    y_max     = cfg.spec_datas['metadata']['y_max']
+    y_min     = cfg.spec_datas['metadata']['y_min']
 
-            sfreq     = metadata['sfreq']
-            n_samples = metadata['n_samples']
+    sfreq     = metadata['sfreq']
+    n_samples = metadata['n_samples']
 
-            # set axes and other basic info for plots
-            cfg.sa.spec.yrange      = (y_min, y_max)
-            cfg.sa.spectrogram.zmin = y_min
-            cfg.sa.spectrogram.zmax = y_max
+    # set axes and other basic info for plots
+    cfg.sa.spec.yrange      = (y_min, y_max)
+    cfg.sa.spectrogram.zmin = y_min
+    cfg.sa.spectrogram.zmax = y_max
 
-            cfg.sa.centre_frequency = cfg.spec_datas['metadata']['cfreq']
-
-
-            cfg.sa.spec.sample_frequency        = sfreq
-            cfg.sa.spectrogram.sample_frequency = sfreq
-            cfg.sa.spec.number_samples          = n_samples
-            cfg.sa.spectrogram.number_samples   = n_samples
-            cfg.sa.spec.show_data()
-
-            return None, req_id
+    cfg.sa.centre_frequency = cfg.spec_datas['metadata']['cfreq']
 
 
+    cfg.sa.spec.sample_frequency        = sfreq
+    cfg.sa.spectrogram.sample_frequency = sfreq
+    cfg.sa.spec.number_samples          = n_samples
+    cfg.sa.spectrogram.number_samples   = n_samples
+    cfg.sa.spec.show_data()
 
-    return None
+    return dash.no_update, req_id
 
 
 @dash.callback(
@@ -179,7 +178,6 @@ def get_next_drf_data(n, req_id):
     if 'status' in d and d['status'] == 'DONE':
         # stream has finished
         # unsubscribe from updates
-        cfg.pubsub.punsubscribe(f'responses:{req_id}:*')
         print(f"FINISHED READING ALL DATA FROM REQUEST: {req_id}")
         return "True", dash.no_update
 
@@ -224,7 +222,8 @@ def update_metadeta_output(req_id, tab):
     The 'request-id' value gets updated when metadata is loaded
     """
     if not cfg.spec_datas:
-        return None
+        return html.P("Metadata will appear here when you pick a Digital RF File")
+        # return None
 
     ctx = dash.callback_context
     prop_id = ctx.triggered[0]['prop_id'].split('.')[0]
@@ -248,58 +247,48 @@ def update_metadeta_output(req_id, tab):
 
 )
 def start_redis_stream(n, drf_path):
-    # if (n % 2) == 1:
     print("clicked input dir button")
-    if n > 0:
-        print("clicked redis button")
-        # req_id = cfg.redis_instance.get('request-id').decode()
-        req_id = cfg.redis_instance.incr('request-id')
-        print(f'REQ ID: {req_id}')
-        
-
-        cfg.pubsub.subscribe(f'responses:{req_id}:channels')
-
-        print(f"publishing request {req_id} for {drf_path}")
-        # make a request for the channels from drf_path
-        cfg.redis_instance.publish(f'requests:{req_id}:channels', drf_path)
-
-        for msg in cfg.pubsub.listen():
-            print(f"got response message: {msg}")
-            channel = msg['channel'].decode()
-            if 'channels' in channel:
-                drf_channels = json.loads(msg['data'])
-                print(f'got channels from redis: {drf_channels}')
-
-                picker_options = [
-                    {'label': chan, 'value': chan} for chan in drf_channels
-                ]
-
-                children = [
-                    html.H4("Choose the channel:"),
-                    dcc.Dropdown(
-                        options=picker_options,
-                        value=drf_channels[0],
-                        id={
-                            'type': 'channel-picker', 'index': 0, 
-
-                        }
-                    ),
-                 ]
-
-                cfg.pubsub.unsubscribe(f'responses:{req_id}:channels')
-
-                return children
-
-
+    if n < 1: return dash.no_update
+    print("clicked redis button")
+    req_id = cfg.redis_instance.incr('request-id')
+    print(f'REQ ID: {req_id}')
     
-        # global redis_data
-        # for drf files, we want to push all data we haven't into a queue which gets outputted
-        redis_data = []
+    print(f"publishing request {req_id} for {drf_path}")
+    # make a request for the channels from drf_path
+    cfg.redis_instance.publish(f'requests:{req_id}:channels', drf_path)
 
 
-        return None
+    try:
+        rstrm = cfg.redis_instance.xread({f'responses:{req_id}:channels'.encode(): '0-0'.encode()}, block=1000, count=1) 
+        print(f"received drf channels:\n{rstrm}")
 
-    return None
+    except:
+        return dash.no_update
+
+    cfg.redis_instance.delete(f'responses:{req_id}:channels')
+    
+    drf_channels = json.loads(rstrm[0][1][0][1][b'data'])
+    print(f'got channels from redis: {drf_channels}')
+
+    picker_options = [
+        {'label': chan, 'value': chan} for chan in drf_channels
+    ]
+
+    children = [
+        html.H4("Choose the channel:"),
+        dcc.Dropdown(
+            options=picker_options,
+            value=drf_channels[0],
+            id={
+                'type': 'channel-picker', 'index': 0, 
+
+            }
+        ),
+     ]
+
+    return children
+
+
 
 
 @dash.callback(
@@ -350,8 +339,6 @@ def handle_rewind_data_button(n):
     cfg.redis_instance.set("last-drf-id", "0-0")
     cfg.sa.spectrogram.clear_data()
     return 0
-
-
 
 
 

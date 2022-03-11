@@ -26,16 +26,18 @@ To run the application, first start running redis in a terminal. This can be don
 redis-server
 ```
 
-Run the back end in another terminal. This can by navigating to the location of the repository and running the following steps:
+Run the back end in another terminal. There are two versions of the "back end", one which simulates a mock live stream, and one which handles and responds to requests for Digital RF data. Either can by navigating to the location of the repository and running the following steps:
 
 ```
 conda activate rfsoc
-python ./back_end/redis_back_end.py
+python ./back_end/redis_back_end.py --type (mock|drf)
 ```
+
+Type "mock" for the mock stream, and "drf" for the digital RF request handler.
 
 The first line activates the Anaconda environment we created earlier. 
 
-
+You can configure the location of the redis server in /front_end/config.py
 
 Run the front end in a third terminal by navigating to the location of the repository and running the following steps:
 ```

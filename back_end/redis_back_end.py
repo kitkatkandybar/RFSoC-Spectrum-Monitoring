@@ -27,7 +27,9 @@ def drf_requests_handler(msg):
         drf_channels = get_drf_channels(drf_path)
 
         print(f'sending: responses:{req_id}:channels, {json.dumps(drf_channels)}')
-        r.publish(f'responses:{req_id}:channels', json.dumps(drf_channels))
+        # r.publish(f'responses:{req_id}:channels', json.dumps(drf_channels))
+        r.xadd(f'responses:{req_id}:channels', {'data': json.dumps(drf_channels)}) 
+
     elif 'data' in channel:
         req_params = json.loads(msg['data'])
         print(f'got request for data: {req_params} ')
@@ -49,7 +51,7 @@ def drf_requests_handler(msg):
             spec_datas['metadata']['n_samples']  = spec_datas['data'][0]['data'].shape[0]
 
 
-            r.publish(f'responses:{req_id}:metadata', json.dumps(spec_datas['metadata']))
+            r.xadd(f'responses:{req_id}:metadata', {'data': json.dumps(spec_datas['metadata'])}) 
 
 
             print(f"going to send {len(spec_datas['data'])} data points")
