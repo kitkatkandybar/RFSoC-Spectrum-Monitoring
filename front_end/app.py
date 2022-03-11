@@ -11,15 +11,16 @@ It also defines the layout and functionality of the app.
 import re
 import time
 import json
+import argparse
+import os.path
 
+import yaml
 import dash
 from dash import dcc
 from dash import html
 import dash_bootstrap_components as dbc
 import numpy as np
 import uuid
-
-from flask_caching import Cache
 
 import redis
 
@@ -35,7 +36,7 @@ import config as cfg
 
 
 # create a Dash app
-app = dash.Dash(__name__, external_stylesheets=[dbc.themes.MINTY], suppress_callback_exceptions=True)
+app = dash.Dash(__name__, external_stylesheets=[dbc.themes.SANDSTONE, dbc.icons.BOOTSTRAP], suppress_callback_exceptions=True)
 
 
 def serve_layout():
@@ -98,6 +99,7 @@ def serve_layout():
         dcc.Store(id='stream-data'),
         dcc.Store(id='drf-data'),
         dcc.Store(id='drf-data-finished', data="False"),
+        dcc.Store(id='placeholder'),
 
     ], fluid=True)
 
@@ -127,10 +129,11 @@ def render_tab_content(tab):
               dash.Input('stream-data', 'data'),
               dash.Input('drf-data', 'data'),
               dash.Input({'type': 'radio-log-scale', 'index': dash.ALL,}, 'value'),
-              dash.Input({'type': 'stream-metadata-div', 'index': dash.ALL,}, 'children'),
+              dash.Input({'type': 'stream-metadata-accordion', 'index': dash.ALL,}, 'children'),
+              dash.Input('request-id', 'data'),
 
               )
-def update_spectrum_graph(stream_data, drf_data, log_scale, stream_metadata):
+def update_spectrum_graph(stream_data, drf_data, log_scale, stream_metadata, req_id):
     """ update the spectrum graph with new data, every time
     the Interval component fires"""
 
@@ -158,8 +161,6 @@ def update_spectrum_graph(stream_data, drf_data, log_scale, stream_metadata):
 
     else:
         # log scale option has been modified
-        
-        # print(f"modifying log scale, ymin: {y_min}, ymax: {y_max}")
         if log_scale and log_scale[0] == 'on':
             cfg.sa.spec.ylabel = "Amplitude (dB)" 
             if cfg.spec_datas:
@@ -184,10 +185,12 @@ def update_spectrum_graph(stream_data, drf_data, log_scale, stream_metadata):
               dash.Input('stream-data', 'data'),
               dash.Input('drf-data', 'data'),
               dash.Input({'type': 'radio-log-scale', 'index': dash.ALL,}, 'value'),
-              dash.Input({'type': 'stream-metadata-div', 'index': dash.ALL,}, 'children'),
+              dash.Input({'type': 'stream-metadata-accordion', 'index': dash.ALL,}, 'children'),
+              dash.Input('request-id', 'data'),
+
               )
 
-def update_specgram_graph(stream_data, drf_data, log_scale, stream_metadata):
+def update_specgram_graph(stream_data, drf_data, log_scale, stream_metadata, req_id):
     """ update the spectogram plot with new data, every time
     the Interval component fires"""
     ctx = dash.callback_context
@@ -230,6 +233,21 @@ def update_specgram_graph(stream_data, drf_data, log_scale, stream_metadata):
 
 
 
+
 if __name__ == '__main__':
     # app.run_server(debug=True, processes=6)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--cfg', default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.yaml"), help='Config file for this application')
+
+    args = parser.parse_args()
+    with open(args.cfg, 'r') as f:
+        cfg_data = yaml.safe_load(f)
+
+    # initialize redis instance based on cfg params
+    cfg.redis_instance = redis.Redis(host=cfg_data['redis']['host'], port=cfg_data['redis']['port'], db=0)
+    cfg.pubsub         = cfg.redis_instance.pubsub(ignore_subscribe_messages=True)
+
+
+
+
     app.run_server(debug=True)

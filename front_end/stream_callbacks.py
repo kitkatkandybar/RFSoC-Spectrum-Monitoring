@@ -11,14 +11,14 @@ import config as cfg
 
 @dash.callback(
             dash.Output({'type': 'stream-picker', 'index': dash.ALL,}, 'options'),
-            dash.Input("content-tabs", 'value'))
-def get_active_streams(tab):
+            dash.Input('stream-picker-div', 'n_clicks'),
+            dash.State("content-tabs", 'value'))
+def get_active_streams(n, tab):
     """
     get the currently active streams from Redis when the streams tab is clicked
     """
-    print("boop")
-    print('getting active streams?')
-    if tab == 'content-tab-2':
+    print(f'getting active streams? {n}')
+    if n and tab == 'content-tab-2':
         streams = cfg.redis_instance.smembers("active_streams")
         print(f"GOT STREAMS: {streams}")
         picker_options = [
@@ -33,11 +33,12 @@ def get_active_streams(tab):
 
 
 @dash.callback(
-            dash.Output({'type': 'stream-metadata-div', 'index': 0,}, 'children'),
+            dash.Output({'type': 'stream-metadata-accordion', 'index': 0,}, 'children'),
             dash.Input({'type': 'stream-picker', 'index': dash.ALL,}, 'value'))
 def update_stream_metadata(stream_names):
-    if not 'value':
-        raise dash.exceptions.PreventUpdate
+    if not stream_names[0]:
+        return html.P("Metadata will appear here when you pick a stream"),
+        # raise dash.exceptions.PreventUpdate
 
     print(f"Getting metadata for {stream_names[0]}")
     metadata = cfg.redis_instance.hgetall(f"metadata:{stream_names[0]}")
@@ -67,7 +68,7 @@ def update_stream_metadata(stream_names):
 
 
     children = [
-        html.H4("Metadata:"),
+        # html.H4("Metadata:"),
         html.P(f"Name: {stream_names[0]}"),
         html.P(f"Sample Rate: {metadata['sfreq']} samples/second"),
         html.P(f"Center Frequency: {metadata['cfreq']} Hz"),
@@ -77,37 +78,6 @@ def update_stream_metadata(stream_names):
     return children
 
 
-
-@dash.callback(
-            dash.Output('play-stream-div', 'children'),
-            dash.Input({'type': 'stream-metadata-div', 'index': dash.ALL,}, 'children'),
-            )
-def display_play_stream_button(s):
-    if not s:
-        raise dash.exceptions.PreventUpdate
-
-    children = [
-        dbc.Button(
-            'Play stream data', 
-            id={
-                'type': 'play-stream-data', 'index': 0, 
-            },
-            n_clicks=0, 
-            disabled=False,
-            color="primary",
-        ),
-        dbc.Button(
-            'Pause', 
-            id={
-                'type': 'pause-stream-data', 'index': 0, 
-            },
-            n_clicks=0, 
-            disabled=False,
-            color="secondary",
-        ),
-
-    ]
-    return children
 
 @dash.callback(dash.Output('stream-data', 'data'),
             dash.Input('stream-graph-interval', 'n_intervals'),
@@ -143,6 +113,28 @@ def handle_graph_stream_interval(play_n, pause_n, tab):
         return False
 
     return True
+
+@dash.callback(
+    dash.Output({'type': 'play-stream-data', 'index': 0,}, 'disabled'),
+    dash.Input({'type': 'stream-picker', 'index': dash.ALL,}, 'value'),
+)
+def handle_disable_play_stream_button(stream_val):
+    if not stream_val[0]:
+        return True
+
+    return False
+
+@dash.callback(
+    dash.Output({'type': 'pause-stream-data', 'index': 0,}, 'disabled'),
+    dash.Input({'type': 'play-stream-data', 'index': dash.ALL,}, 'disabled'),
+    dash.Input({'type': 'stream-picker', 'index': dash.ALL,}, 'value'),
+)
+def handle_disable_pause_stream_button(play_disabled, stream_val):
+    if not stream_val[0]:
+        return True
+
+    return False
+
 
 
 

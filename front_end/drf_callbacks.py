@@ -68,10 +68,10 @@ def update_bins_slider(n):
 
             },
             min = 8,
-            max = 10,
+            max = 11,
             step = None,
             value= 10,
-            marks= {i: '{}'.format(2 ** i) for i in range(8, 11)},
+            marks= {i: '{}'.format(2 ** i) for i in range(8, 12)},
             included=False,
 
 
@@ -85,7 +85,7 @@ def update_bins_slider(n):
 @dash.callback(
     dash.Output('drf-err', 'children'),
     dash.Output('request-id', 'data'),
-    dash.Input({'type': 'load-val', 'index': dash.ALL}, 'n_clicks'),
+    dash.Input({'type': 'drf-load', 'index': dash.ALL}, 'n_clicks'),
     dash.State('drf-path', 'value'),
     dash.State({'type': 'channel-picker', 'index': dash.ALL,}, 'value'),
     dash.State({'type': 'range-slider', 'index': dash.ALL,}, 'value'),
@@ -166,6 +166,8 @@ def get_next_drf_data(n, req_id):
 
     rstrm = cfg.redis_instance.xrange(f'responses:{req_id}:stream', min=f"({last_r_id}", count=1) 
     if (len(rstrm) == 0):
+        for i in range(5):
+            rstrm = cfg.redis_instance.xrange(f'responses:{req_id}:stream', min=f"({last_r_id}", count=1)
         print("no update")
         raise dash.exceptions.PreventUpdate
 
@@ -190,17 +192,20 @@ def get_next_drf_data(n, req_id):
     dash.Input('request-id', 'data'),
     dash.Input("content-tabs", 'value'),
     dash.Input("drf-data-finished", 'data'),
-    dash.State({'type': 'load-val', 'index': dash.ALL}, 'n_clicks'),
+    dash.Input({'type': 'drf-pause', 'index': dash.ALL}, 'n_clicks'),
+    dash.Input({'type': 'drf-play', 'index': dash.ALL}, 'n_clicks'),
+    dash.State({'type': 'drf-load', 'index': dash.ALL}, 'n_clicks'),
 
     prevent_initial_call=True
     )
-def handle_drf_interval(req_id, tab, drf_finished, n):
+def handle_drf_interval(req_id, tab, drf_finished, pause, play, n):
     ctx = dash.callback_context
 
     prop_id = ctx.triggered[0]['prop_id'].split('.')[0]
-    if n and n[0] > 0 and prop_id == "request-id" and req_id != -1 and tab == 'content-tab-1':
+    if n and n[0] > 0 and (prop_id == "request-id" or "play" in prop_id) and req_id != -1 and tab == 'content-tab-1':
         return False
 
+    print("Disabling drf interval")
     return True
 
 
@@ -209,7 +214,7 @@ def handle_drf_interval(req_id, tab, drf_finished, n):
 
 
 @dash.callback(
-    dash.Output(component_id='metadata-output', component_property='children'),
+    dash.Output({'type': 'drf-metadata-accordion', 'index': 0,}, 'children'),
     dash.Input('request-id', 'data'),
     dash.Input("content-tabs", 'value'),
 )
@@ -227,7 +232,7 @@ def update_metadeta_output(req_id, tab):
         return None
 
     children = [
-        html.H4("Metadata:"),
+        # html.H4("Metadata:"),
         html.P(f"Sample Rate: {cfg.spec_datas['metadata']['sfreq']} samples/second"),
         html.P(f"Center Frequency: {cfg.spec_datas['metadata']['cfreq']} Hz"),
         html.P(f"Channel: {cfg.spec_datas['metadata']['channel']}"),
@@ -298,7 +303,7 @@ def start_redis_stream(n, drf_path):
 
 
 @dash.callback(
-    dash.Output({'type': 'load-val', 'index': 0}, 'disabled'),
+    dash.Output({'type': 'drf-load', 'index': 0}, 'disabled'),
     dash.Input('input-dir-button', 'n_clicks'),
 )
 def redis_update_load_data_button(n):
@@ -306,24 +311,58 @@ def redis_update_load_data_button(n):
 
     return False
 
+
+
 @dash.callback(
-    dash.Output(component_id='reset-val', component_property='disabled'),
-    dash.Input({'type': 'load-val', 'index': dash.ALL,}, 'n_clicks'),
+    dash.Output({'type': 'drf-play', 'index': 0}, 'disabled'),
+    dash.Input({'type': 'drf-load', 'index': dash.ALL,}, 'n_clicks'),
 )
 def enable_replay_data_button(n):
     if n and n[0] < 1: return True
 
     return False
 
+@dash.callback(
+    dash.Output({'type': 'drf-rewind', 'index': 0}, 'disabled'),
+    dash.Input({'type': 'drf-load', 'index': dash.ALL,}, 'n_clicks'),
+)
+def enable_rewind_data_button(n):
+    if n and n[0] < 1: return True
+
+    return False
+
+@dash.callback(
+    dash.Output({'type': 'drf-pause', 'index': 0}, 'disabled'),
+    dash.Input({'type': 'drf-load', 'index': dash.ALL,}, 'n_clicks'),
+)
+def enable_pause_data_button(n):
+    if n and n[0] < 1: return True
+
+    return False
+
+@dash.callback(
+    dash.Output('placeholder', 'data'),
+    dash.Input({'type': 'drf-rewind', 'index': dash.ALL,}, 'n_clicks'),
+)
+def handle_rewind_data_button(n):
+    if n and n[0] < 1: raise dash.exceptions.PreventUpdate
+    print("resetting drf data?")
+    cfg.redis_instance.set("last-drf-id", "0-0")
+    cfg.sa.spectrogram.clear_data()
+    return 0
+
+
+
 
 
 
 @dash.callback(
     dash.Output('reset-button-graph-interval-placeholder', 'n_clicks'),
+    dash.Input({'type': 'drf-play', 'index': dash.ALL}, 'n_clicks'),
     dash.Input('reset-val', 'n_clicks'),
 )
-def handle_reset_button(n_clicks):
-    if n_clicks < 1:
+def handle_play_button(n_clicks):
+    if n_clicks[0] < 1:
         return 0
 
     cfg.sa.spectrogram.clear_data()
