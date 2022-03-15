@@ -9,8 +9,6 @@ It also defines the layout and functionality of the app.
 # Run this app with `python app.py` and
 # visit http://127.0.0.1:8050/ in your web browser.
 import re
-import time
-import json
 import argparse
 import os.path
 
@@ -142,7 +140,7 @@ def update_spectrum_graph(stream_data, drf_data, log_scale, stream_metadata, req
         return cfg.sa.plot
 
     prop_id = ctx.triggered[0]['prop_id'].split('.')[0]
-    print("called update spectrum graph")
+    # print("called update spectrum graph")
 
     if prop_id == "stream-data":
         cfg.sa.spec.show_data()

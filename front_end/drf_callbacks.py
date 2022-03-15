@@ -1,10 +1,11 @@
 import dash
 from dash import dcc
 from dash import html
+import dash_bootstrap_components as dbc
 
 import time
 
-import json
+import orjson
 
 import config as cfg
 
@@ -25,7 +26,7 @@ def update_sample_slider(n):
     sample_mark_width    = 200000
 
     children = [
-        html.H4('Select the sample range:'),
+        dbc.Label("Sample Range", html_for="range-slider"),
         dcc.RangeSlider(
             id={
                 'type': 'range-slider', 'index': 0, 
@@ -61,7 +62,7 @@ def update_bins_slider(n):
     sample_mark_width    = 100000
 
     children = [
-        html.H4(children='Select the number of bins:'),
+        dbc.Label("Number of Bins", html_for="bins-slider"),
         dcc.Slider(
             id={
                 'type': 'bins-slider', 'index': 0, 
@@ -98,17 +99,18 @@ def send_redis_request_data(n_clicks, drf_path, channel, sample_range, bins):
     req_id = cfg.redis_instance.incr('request-id')
     print(f'REQ ID: {req_id}')
 
+    n_bins = 2**bins[0]
 
     req = {
         'drf_path'     : drf_path,
         'channel'      : channel[0],
         'start_sample' : sample_range[0][0],
         'stop_sample'  : sample_range[0][1],
-        'bins'         : 2**bins[0]
+        'bins'         : n_bins
 
     }
 
-    cfg.redis_instance.publish(f'requests:{req_id}:data', json.dumps(req))
+    cfg.redis_instance.publish(f'requests:{req_id}:data', orjson.dumps(req))
 
 
     try:
@@ -120,7 +122,7 @@ def send_redis_request_data(n_clicks, drf_path, channel, sample_range, bins):
 
     cfg.redis_instance.delete(f'responses:{req_id}:metadata')
 
-    metadata = json.loads(rstrm[0][1][0][1][b'data'])
+    metadata = orjson.loads(rstrm[0][1][0][1][b'data'])
     print(f'got metadata from redis: {metadata}')
     cfg.redis_instance.set("last-drf-id", "0-0")
 
@@ -143,6 +145,9 @@ def send_redis_request_data(n_clicks, drf_path, channel, sample_range, bins):
     cfg.sa.spectrogram.zmax = y_max
 
     cfg.sa.centre_frequency = cfg.spec_datas['metadata']['cfreq']
+
+    cfg.sa.spec.number_samples = n_bins
+    cfg.sa.spectrogram.number_samples = n_bins
 
 
     cfg.sa.spec.sample_frequency        = sfreq
@@ -174,7 +179,7 @@ def get_next_drf_data(n, req_id):
     new_r_id = rstrm[0][0].decode()
     cfg.redis_instance.set("last-drf-id", new_r_id)
 
-    d = json.loads(rstrm[0][1][b'data'])
+    d = orjson.loads(rstrm[0][1][b'data'])
     if 'status' in d and d['status'] == 'DONE':
         # stream has finished
         # unsubscribe from updates
@@ -267,7 +272,7 @@ def start_redis_stream(n, drf_path):
 
     cfg.redis_instance.delete(f'responses:{req_id}:channels')
     
-    drf_channels = json.loads(rstrm[0][1][0][1][b'data'])
+    drf_channels = orjson.loads(rstrm[0][1][0][1][b'data'])
     print(f'got channels from redis: {drf_channels}')
 
     picker_options = [
@@ -275,7 +280,7 @@ def start_redis_stream(n, drf_path):
     ]
 
     children = [
-        html.H4("Choose the channel:"),
+        dbc.Label("Digital RF Channel", html_for="channel-picker"),
         dcc.Dropdown(
             options=picker_options,
             value=drf_channels[0],
@@ -355,3 +360,16 @@ def handle_play_button(n_clicks):
     cfg.sa.spectrogram.clear_data()
 
     return 1
+
+
+@dash.callback(
+    dash.Output("drf-form-modal", "is_open"),
+    dash.Input("open-modal-button", "n_clicks"), 
+    dash.Input("close-modal-button", "n_clicks"),
+    dash.Input({'type': 'drf-load', 'index': dash.ALL,}, 'n_clicks'),
+    dash.State("drf-form-modal", "is_open"),
+)
+def toggle_modal(n_open, n_close, n_load, is_open):
+    if n_open or n_close or n_load[0]:
+        return not is_open
+    return is_open

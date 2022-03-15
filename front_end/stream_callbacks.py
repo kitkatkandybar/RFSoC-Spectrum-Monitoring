@@ -2,7 +2,7 @@ import dash
 from dash import dcc
 from dash import html
 import dash_bootstrap_components as dbc
-import json
+import orjson
 import time
 
 import config as cfg
@@ -93,7 +93,7 @@ def get_next_data(n, stream_name):
         print("no update")
         raise dash.exceptions.PreventUpdate
 
-    d = json.loads(rstrm[0][1][b'data'])
+    d = orjson.loads(rstrm[0][1][b'data'])
     return d
         
 @dash.callback(
