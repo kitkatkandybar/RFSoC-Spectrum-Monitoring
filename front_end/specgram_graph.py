@@ -42,7 +42,7 @@ class Spectrogram():
         self._ypixel            = ypixel
         self._data              = np.ones((self._image_height, self._image_width, 3), dtype=np.uint8)*128
         self._data_status       = False
-        self.cmap               = cmap
+        self._cmap               = cmap
         self._zlabel = zlabel
 
         
@@ -64,7 +64,7 @@ class Spectrogram():
         cm = self.matplotlib_to_plotly(cm, 255)
 
         # dummy trace needed to add color bar to plot
-        dummy_trace = {
+        self.dummy_trace = {
             'x': [None],
             'y': [None],
             'mode': 'markers',
@@ -82,7 +82,7 @@ class Spectrogram():
         }
 
 
-        self._plot = go.FigureWidget(data=[dummy_trace], layout={
+        self._plot = go.FigureWidget(data=[self.dummy_trace], layout={
             'height': self._height,
             'width' : self._width,
             'yaxis' : {
@@ -171,7 +171,7 @@ class Spectrogram():
             value = np.array(np.interp(value, (self.zmin, self.zmax), (0, 1)), dtype=np.single) # Scale Z-Axis
             value = np.resize(signal.resample(value, self._image_width), (1, self._image_width)) # Resample X-Axis
             value = np.repeat(value, self._ypixel, 0) # Repeat Y-Axis
-            cm    = plt.get_cmap(self.cmap)
+            cm    = plt.get_cmap(self._cmap)
             value = cm(value)
             self._data = np.roll(self._data, self._ypixel, 0) # Roll data
             self._data[0:self._ypixel, :, :] = (value[:, :, :3]*255).astype(np.uint8) # Update first line
@@ -245,7 +245,24 @@ class Spectrogram():
     @height.setter
     def height(self, height):
         self._plot.layout.height = height
-        
+
+    @property
+    def cmap(self):
+        return self._cmap
+    
+    @cmap.setter
+    def cmap(self, cmap):
+        self._cmap = cmap
+        cm = plt.get_cmap(cmap)
+        cm = self.matplotlib_to_plotly(cm, 255)
+
+        self._plot.update_traces(
+            {'marker': {
+                'colorscale': cm
+                }
+            }
+        )
+
     @property
     def quality(self):
         return int(101-self._ypixel)

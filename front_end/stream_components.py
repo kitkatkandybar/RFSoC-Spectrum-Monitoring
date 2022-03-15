@@ -49,19 +49,37 @@ stream_sidebar_components = html.Div(
                 }
             ),
             dbc.AccordionItem(
-                dcc.RadioItems(
-
+                 [
+                    dbc.Label("Y axis scale", html_for="radio-log-scale"),
+                    dcc.RadioItems(
                         options=[
                             {'label': 'Log Scale', 'value': 'on'},
                             {'label': 'Linear Scale', 'value': 'off'}
                         ],
-                    value='on',
-                    id={
-                        'type': 'radio-log-scale', 'index': 1, 
-                    },
-                    labelStyle={"verticalAlign": "middle"},
-                    className="plot-display-radio-items",
-                ),
+                        value='on',
+                        id={
+                            'type': 'radio-log-scale', 'index': 1, 
+                        },
+                        labelStyle={"verticalAlign": "middle", 'padding-right': '10px'},
+                        className="plot-display-radio-items",
+                    ),
+                    dbc.Label("Spectrogram Colorscheme", html_for="specgram-color-dropdown"),
+                    dcc.Dropdown(
+                        options=[
+                            {'label': 'viridis', 'value': 'viridis',},    
+                            {'label': 'inferno', 'value': 'inferno',},    
+                            {'label': 'magma',   'value': 'magma',  },    
+                            {'label': 'cividis', 'value': 'cividis',},    
+                            {'label': 'jet',     'value': 'jet',    },   
+                        ],
+                        value='jet',
+                        id={
+                            'type': 'specgram-color-dropdown', 'index': 1, 
+                        },
+                        searchable=False,
+                        clearable=False
+                    ),
+                ],
                 title="Graph settings",
             ),
         ],

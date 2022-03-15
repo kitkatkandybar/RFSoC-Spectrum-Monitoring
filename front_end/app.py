@@ -183,12 +183,13 @@ def update_spectrum_graph(stream_data, drf_data, log_scale, stream_metadata, req
               dash.Input('stream-data', 'data'),
               dash.Input('drf-data', 'data'),
               dash.Input({'type': 'radio-log-scale', 'index': dash.ALL,}, 'value'),
+              dash.Input({'type': 'specgram-color-dropdown', 'index': dash.ALL,}, 'value'),
               dash.Input({'type': 'stream-metadata-accordion', 'index': dash.ALL,}, 'children'),
               dash.Input('request-id', 'data'),
 
               )
 
-def update_specgram_graph(stream_data, drf_data, log_scale, stream_metadata, req_id):
+def update_specgram_graph(stream_data, drf_data, log_scale, color, stream_metadata, req_id):
     """ update the spectogram plot with new data, every time
     the Interval component fires"""
     ctx = dash.callback_context
@@ -209,7 +210,9 @@ def update_specgram_graph(stream_data, drf_data, log_scale, stream_metadata, req
         if log_scale[0] == 'on':
             d = 10.0 * np.log10(d + 1e-12)
         cfg.sa.spectrogram.data = d
-
+    elif "color" in prop_id:
+        print(f"Changing color to: {color[0]}")
+        cfg.sa.spectrogram.cmap = color[0]
     else:
         # log scale option has been modified
         if log_scale and log_scale[0] == 'on':
