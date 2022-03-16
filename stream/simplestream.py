@@ -39,12 +39,12 @@ def run_stream():
         while True:
             
             metadata = {
-                'sfreq': fs,'y_max': 100,
+                'sfreq': fs,
+                'y_max': 100,
                 'y_min':0,
-                'n_samples':n
+                'n_samples':number_samples,
                 'cfreq': fc,
-                'channel': channel,
-                umber_samples
+                'channel': channel
             }
             
             r.hset(f"metadata:{stream_name}", mapping=metadata)
