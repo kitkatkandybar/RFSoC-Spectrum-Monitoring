@@ -14,4 +14,7 @@ dependencies:
   - matplotlib
   - scipy
   - redis
+  - pyyaml
+  - orjson
+  
 prefix: C:\Users\yanag\.conda\envs\rfsoc

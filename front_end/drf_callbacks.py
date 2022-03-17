@@ -26,6 +26,7 @@ def update_sample_slider(n):
     sample_mark_width    = 200000
 
     children = [
+        html.Hr(),
         dbc.Label("Sample Range", html_for="range-slider"),
         dcc.RangeSlider(
             id={
@@ -62,6 +63,7 @@ def update_bins_slider(n):
     sample_mark_width    = 100000
 
     children = [
+        html.Hr(),
         dbc.Label("Number of Bins", html_for="bins-slider"),
         dcc.Slider(
             id={
@@ -192,7 +194,7 @@ def get_next_drf_data(n, req_id):
 
 @dash.callback(
     dash.Output('drf-interval', 'disabled'),
-    dash.Input('request-id', 'data'),
+    # dash.Input('request-id', 'data'),
     dash.Input("content-tabs", 'value'),
     dash.Input("drf-data-finished", 'data'),
     dash.Input({'type': 'drf-pause', 'index': dash.ALL}, 'n_clicks'),
@@ -201,11 +203,12 @@ def get_next_drf_data(n, req_id):
 
     prevent_initial_call=True
     )
-def handle_drf_interval(req_id, tab, drf_finished, pause, play, n):
+def handle_drf_interval(tab, drf_finished, pause, play, n):
     ctx = dash.callback_context
 
     prop_id = ctx.triggered[0]['prop_id'].split('.')[0]
-    if n and n[0] > 0 and (prop_id == "request-id" or "play" in prop_id) and req_id != -1 and tab == 'content-tab-1':
+    # if n and n[0] > 0 and (prop_id == "request-id" or "play" in prop_id) and req_id != -1 and tab == 'content-tab-1':
+    if n and n[0] > 0 and (prop_id == "request-id" or "play" in prop_id) and tab == 'content-tab-1':
         return False
 
     print("Disabling drf interval")
@@ -280,6 +283,7 @@ def start_redis_stream(n, drf_path):
     ]
 
     children = [
+        html.Hr(),
         dbc.Label("Digital RF Channel", html_for="channel-picker"),
         dcc.Dropdown(
             options=picker_options,
@@ -310,8 +314,13 @@ def redis_update_load_data_button(n):
 @dash.callback(
     dash.Output({'type': 'drf-play', 'index': 0}, 'disabled'),
     dash.Input({'type': 'drf-load', 'index': dash.ALL,}, 'n_clicks'),
+    dash.Input('drf-interval', 'disabled'),
+
 )
-def enable_replay_data_button(n):
+def enable_play_data_button(n, interval_disabled):
+    if not interval_disabled:
+        return True
+
     if n and n[0] < 1: return True
 
     return False
@@ -328,9 +337,13 @@ def enable_rewind_data_button(n):
 @dash.callback(
     dash.Output({'type': 'drf-pause', 'index': 0}, 'disabled'),
     dash.Input({'type': 'drf-load', 'index': dash.ALL,}, 'n_clicks'),
+    dash.Input('drf-interval', 'disabled'),
 )
-def enable_pause_data_button(n):
+def enable_pause_data_button(n, interval_disabled):
     if n and n[0] < 1: return True
+
+    if interval_disabled:
+        return True
 
     return False
 

@@ -127,11 +127,14 @@ def render_tab_content(tab):
               dash.Input('stream-data', 'data'),
               dash.Input('drf-data', 'data'),
               dash.Input({'type': 'radio-log-scale', 'index': dash.ALL,}, 'value'),
+              dash.Input({'type': 'radio-display-max', 'index': dash.ALL,}, 'value'),
+              dash.Input({'type': 'radio-display-min', 'index': dash.ALL,}, 'value'),
+
               dash.Input({'type': 'stream-metadata-accordion', 'index': dash.ALL,}, 'children'),
               dash.Input('request-id', 'data'),
 
               )
-def update_spectrum_graph(stream_data, drf_data, log_scale, stream_metadata, req_id):
+def update_spectrum_graph(stream_data, drf_data, log_scale, display_max, display_min, stream_metadata, req_id):
     """ update the spectrum graph with new data, every time
     the Interval component fires"""
 
@@ -156,6 +159,16 @@ def update_spectrum_graph(stream_data, drf_data, log_scale, stream_metadata, req
             d = 10.0 * np.log10(d + 1e-12)
         cfg.sa.spec.data        = d
         return cfg.sa.plot
+    elif "max" in prop_id:
+        if display_max[0] == 'on':
+            cfg.sa.spec.display_max = True
+        else:
+            cfg.sa.spec.display_max = False
+    elif "min" in prop_id:
+        if display_min[0] == 'on':
+            cfg.sa.spec.display_min = True
+        else:
+            cfg.sa.spec.display_min = False
 
     else:
         # log scale option has been modified
@@ -171,7 +184,7 @@ def update_spectrum_graph(stream_data, drf_data, log_scale, stream_metadata, req
             if cfg.spec_datas:
                 cfg.sa.spec.yrange = (cfg.spec_datas['metadata']['y_min'], cfg.spec_datas['metadata']['y_max'])
  
-
+    print(cfg.sa.spec)
 
 
     return cfg.sa.plot
@@ -189,7 +202,7 @@ def update_spectrum_graph(stream_data, drf_data, log_scale, stream_metadata, req
 
               )
 
-def update_specgram_graph(stream_data, drf_data, log_scale, color, stream_metadata, req_id):
+def update_specgram_graph(stream_data, drf_data, log_scale, color,  stream_metadata, req_id):
     """ update the spectogram plot with new data, every time
     the Interval component fires"""
     ctx = dash.callback_context
@@ -213,6 +226,7 @@ def update_specgram_graph(stream_data, drf_data, log_scale, color, stream_metada
     elif "color" in prop_id:
         print(f"Changing color to: {color[0]}")
         cfg.sa.spectrogram.cmap = color[0]
+
     else:
         # log scale option has been modified
         if log_scale and log_scale[0] == 'on':
@@ -247,4 +261,15 @@ if __name__ == '__main__':
     # initialize redis instance based on cfg params
     cfg.redis_instance = redis.Redis(host=cfg_data['redis']['host'], port=cfg_data['redis']['port'], db=0)
 
-    app.run_server(debug=True)
+    host = cfg_data['dash']['host'] if cfg_data['dash']['host'] else None
+    port = cfg_data['dash']['port'] if cfg_data['dash']['port'] else None
+
+    if host:
+        if port:
+            app.run_server(debug=True, host=host, port=port)
+        else:
+            app.run_server(debug=True, host=host)
+    elif port:
+        app.run_server(debug=True, port=port)
+    else:
+        app.run_server(debug=True)

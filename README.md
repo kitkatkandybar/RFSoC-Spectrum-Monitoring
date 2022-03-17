@@ -18,6 +18,8 @@ Once installed, navigate directory of this repository in a command terminal, and
 conda env create -f environment.yaml
 ```
 
+### Redis
+
 A Redis server is necessary to run this application. Redis requires a UNIX machine. Downloading and installation instructions can be found here: https://redis.io/download.
 
 
@@ -26,20 +28,33 @@ To run the application, first start running redis in a terminal. This can be don
 redis-server
 ```
 
-Run the back end in another terminal. There are two versions of the "back end", one which simulates a mock live stream, and one which handles and responds to requests for Digital RF data. Either can by navigating to the location of the repository and running the following steps:
+### Back End
+
+Run the back end in another terminal. There are two versions of the "back end", one which simulates a mock live stream, and one which handles and responds to requests for Digital RF data. 
+
+The location of the redis server can be configured in ./back_end/config.yaml 
+
+To run the Digital RF Handler:
+```
+conda activate rfsoc
+python ./back_end/drf_back_end.py
+```
+
+To run the mock livestream:
 
 ```
 conda activate rfsoc
-python ./back_end/redis_back_end.py --type (mock|drf)
+python ./back_end/mock_stream.py
 ```
-
-Type "mock" for the mock stream, and "drf" for the digital RF request handler.
 
 The first line activates the Anaconda environment we created earlier. 
 
-You can configure the location of the redis server in /front_end/config.py
+### Front End
+
+The location of the redis server as well as the host/port for the Dash application canh be configured in in /front_end/config.py
 
 Run the front end in a third terminal by navigating to the location of the repository and running the following steps:
+
 ```
 conda activate rfsoc
 python ./front_end/app.py

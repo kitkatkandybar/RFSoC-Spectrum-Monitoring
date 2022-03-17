@@ -3,6 +3,8 @@ from dash import dcc
 from dash import html
 import dash_bootstrap_components as dbc
 
+from shared_components import get_graph_settings
+
 
 
 stream_sidebar_components = html.Div(
@@ -49,37 +51,7 @@ stream_sidebar_components = html.Div(
                 }
             ),
             dbc.AccordionItem(
-                 [
-                    dbc.Label("Y axis scale", html_for="radio-log-scale"),
-                    dcc.RadioItems(
-                        options=[
-                            {'label': 'Log Scale', 'value': 'on'},
-                            {'label': 'Linear Scale', 'value': 'off'}
-                        ],
-                        value='on',
-                        id={
-                            'type': 'radio-log-scale', 'index': 1, 
-                        },
-                        labelStyle={"verticalAlign": "middle", 'padding-right': '10px'},
-                        className="plot-display-radio-items",
-                    ),
-                    dbc.Label("Spectrogram Colorscheme", html_for="specgram-color-dropdown"),
-                    dcc.Dropdown(
-                        options=[
-                            {'label': 'viridis', 'value': 'viridis',},    
-                            {'label': 'inferno', 'value': 'inferno',},    
-                            {'label': 'magma',   'value': 'magma',  },    
-                            {'label': 'cividis', 'value': 'cividis',},    
-                            {'label': 'jet',     'value': 'jet',    },   
-                        ],
-                        value='jet',
-                        id={
-                            'type': 'specgram-color-dropdown', 'index': 1, 
-                        },
-                        searchable=False,
-                        clearable=False
-                    ),
-                ],
+                get_graph_settings(1),
                 title="Graph settings",
             ),
         ],
