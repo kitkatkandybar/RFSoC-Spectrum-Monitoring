@@ -47,21 +47,23 @@ def drf_requests_handler(msg):
             y_max = max([max(d['data']) for d in spec_datas['data']])
             y_min = min([min(d['data']) for d in spec_datas['data']])
 
-            spec_datas['metadata']['y_max']      = y_max
-            spec_datas['metadata']['y_min']      = y_min
-            spec_datas['metadata']['n_samples']  = spec_datas['data'][0]['data'].shape[0]
+            n_data_points = len(spec_datas['data'])
+
+            spec_datas['metadata']['y_max']          = y_max
+            spec_datas['metadata']['y_min']          = y_min
+            spec_datas['metadata']['n_samples']      = spec_datas['data'][0]['data'].shape[0]
+            spec_datas['metadata']['n_data_points']  = n_data_points
 
 
             r.xadd(f'responses:{req_id}:metadata', {'data': json.dumps(spec_datas['metadata'])}) 
 
 
-            print(f"going to send {len(spec_datas['data'])} data points")
-            for i in range(len(spec_datas['data'])):
+            print(f"going to send {n_data_points} data points")
+            for i in range(n_data_points):
                 d = spec_datas['data'][i]['data']
                 r.xadd(f'responses:{req_id}:stream', {'data': json.dumps(d.tolist())}, maxlen=1000)
                 if (i % 100 == 0):
                     print(f"Wrote to Redis: {i}")
-                # time.sleep(0.05)
             # send ending message
             r.xadd(f'responses:{req_id}:stream', {'data': json.dumps({'status': 'DONE'})}, maxlen=1000)
             print(f'Sent last message for responses:{req_id}:stream')

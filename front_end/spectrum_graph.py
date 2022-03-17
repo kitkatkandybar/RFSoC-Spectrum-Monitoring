@@ -76,7 +76,8 @@ class Spectrum():
             'xaxis' : {
                 'title' : self._xlabel,
                 'showticklabels' : True,
-                'autorange' : True
+                # 'autorange' : True,
+                'autorange' : False,
             },
             'yaxis' : {
                 'title' : self._ylabel,
