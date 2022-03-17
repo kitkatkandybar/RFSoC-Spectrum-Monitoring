@@ -18,26 +18,37 @@ Once installed, navigate directory of this repository in a command terminal, and
 conda env create -f environment.yaml
 ```
 
+### Redis
+
 A Redis server is necessary to run this application. Redis requires a UNIX machine. Downloading and installation instructions can be found here: https://redis.io/download.
 
 
-To run the application, first start running redis in a terminal. This can be done with the command:
+To run the application, first start running redis in a terminal on any PC. This can be done with the command:
 ```
 redis-server
 ```
 
-The board has to be connected to a PC via USB and to the power. It also needs to be connected to the Internet: via a router or a computer with an Ethernet cable.
-To access the board and open JupyterLab, on the computer connected to the board browse to http://192.168.3.1/lab 
-Run the iPython Notebook called "simplestream.py"
+### Back End
 
-Make sure that the IP addresses of the receiver and the sender of the data (front_end/config.py and simplestream.py) match the IP of the device in which the redis-server is running
+Connect the board to a PC via USB and to the power. It also needs to be connected to the Internet: via a router or through a computer with an Ethernet cable.
 
+To access the board, open a Jupyter notebook by browsing to http://192.168.3.1/lab on the PC connected to the board
 
-Run the front end in another terminal by navigating to the location of the repository and running the following steps:
+Before running the notebook "simplestream.py" make sure that the IP address of the redis connection host (located in variable called 'r')matches the IP of the device in which the redis-server is running
+
+### Front End
+
+The location of the redis server as well as the host/port for the Dash application can be configured in in /front_end/config.yaml. Again, make sure that the IP address matches the one from the previous steps
+
+Run the front end in a third terminal by navigating to the location of the repository and running the following steps (it can be on any PC, the one you want to display the data on):
 
 ```
 conda activate rfsoc
 python ./front_end/app.py
 ```
+
 The first line activates the Anaconda environment we created earlier. 
+
 The front end will read the data from the Redis stream and display it in the Dash web application, which can be accessed in a web browser at http://127.0.0.1:8050/
+.
+
