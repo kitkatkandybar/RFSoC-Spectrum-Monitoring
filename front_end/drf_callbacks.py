@@ -1,10 +1,11 @@
 import dash
 from dash import dcc
 from dash import html
+import dash_bootstrap_components as dbc
 
 import time
 
-import json
+import orjson
 
 import config as cfg
 
@@ -14,6 +15,12 @@ import config as cfg
     dash.Input('input-dir-button', 'n_clicks'),
 )
 def update_sample_slider(n):
+    """
+    Displays the sample slider once the user has selected a DigitalRF directory
+    """
+    # TODO: only display the slider once the drf channels have been loaded, ie 
+    # when the input has been validated
+
     if n < 1: return None
 
     sample_min  = 0
@@ -25,7 +32,8 @@ def update_sample_slider(n):
     sample_mark_width    = 200000
 
     children = [
-        html.H4('Select the sample range:'),
+        html.Hr(),
+        dbc.Label("Sample Range", html_for="range-slider"),
         dcc.RangeSlider(
             id={
                 'type': 'range-slider', 'index': 0, 
@@ -50,28 +58,36 @@ def update_sample_slider(n):
     dash.Input('input-dir-button', 'n_clicks'),
 )
 def update_bins_slider(n):
+    """
+    Displays the bins slider once the user has selected a DigitalRF directory
+    """
+
+    # TODO: only display the bins once the drf channels have been loaded, ie 
+    # when the input has been validated
+
     if n < 1: return None
 
-    sample_min  = 0
-    sample_max  = 1000000
-    sample_step = 10000
+    sample_min           = 0
+    sample_max           = 1000000
+    sample_step          = 10000
 
     sample_start_default = 300000
     sample_stop_default  = 700000
     sample_mark_width    = 100000
 
     children = [
-        html.H4(children='Select the number of bins:'),
+        html.Hr(),
+        dbc.Label("Number of Bins", html_for="bins-slider"),
         dcc.Slider(
             id={
                 'type': 'bins-slider', 'index': 0, 
 
             },
             min = 8,
-            max = 10,
+            max = 11,
             step = None,
             value= 10,
-            marks= {i: '{}'.format(2 ** i) for i in range(8, 11)},
+            marks= {i: '{}'.format(2 ** i) for i in range(8, 12)},
             included=False,
 
 
@@ -84,128 +100,171 @@ def update_bins_slider(n):
 
 @dash.callback(
     dash.Output('drf-err', 'children'),
-    dash.Input('load-val', 'n_clicks'),
+    dash.Output('request-id', 'data'),
+    dash.Input({'type': 'drf-load', 'index': dash.ALL}, 'n_clicks'),
     dash.State('drf-path', 'value'),
     dash.State({'type': 'channel-picker', 'index': dash.ALL,}, 'value'),
     dash.State({'type': 'range-slider', 'index': dash.ALL,}, 'value'),
     dash.State({'type': 'bins-slider', 'index': dash.ALL,}, 'value'),
 )
-def send_redis_request_data(n_clicks, drf_path, channel, sample_range, bins):
-    if n_clicks < 1:
-        return None
+def send_redis_request_and_get_metadata(n_clicks, drf_path, channel, sample_range, bins):
+    """
+    Sends a request to the back end for DigitalRF data, and receives the metadata from the request
+    """
+    if not n_clicks or n_clicks[0] < 1:
+        return None, 0 
 
-    req_id = cfg.redis_instance.get('request-id').decode()
-    cfg.redis_instance.incr('request-id')
+    req_id = cfg.redis_instance.incr('request-id')
+    print(f'REQ ID: {req_id}')
 
-    cfg.pubsub.psubscribe(f'responses:{req_id}:*')
+    n_bins = 2**bins[0]
 
     req = {
         'drf_path'     : drf_path,
         'channel'      : channel[0],
         'start_sample' : sample_range[0][0],
         'stop_sample'  : sample_range[0][1],
-        'bins'         : 2**bins[0]
-
+        'bins'         : n_bins
     }
 
-    cfg.redis_instance.publish(f'requests:{req_id}:data', json.dumps(req))
-
-    for msg in cfg.pubsub.listen():
-        print(f"got response message: {msg}")
-        channel = msg['channel'].decode()
-        if 'metadata' in channel:
-            metadata = json.loads(msg['data'])
-            print(f'got metadata from redis: {metadata}')
-
-            # global cfg.spec_datas
-            cfg.spec_datas = {}
-            cfg.spec_datas['metadata'] = metadata
-
-            cfg.sa.spectrogram.clear_data()
-
-            y_max     = cfg.spec_datas['metadata']['y_max']
-            y_min     = cfg.spec_datas['metadata']['y_min']
-
-            sfreq     = metadata['sfreq']
-            n_samples = metadata['n_samples']
-
-            # set axes and other basic info for plots
-            cfg.sa.spec.yrange      = (y_min, y_max)
-            cfg.sa.spectrogram.zmin = y_min
-            cfg.sa.spectrogram.zmax = y_max
-
-            cfg.sa.centre_frequency = cfg.spec_datas['metadata']['cfreq']
+    cfg.redis_instance.publish(f'requests:{req_id}:data', orjson.dumps(req))
 
 
-            cfg.sa.spec.sample_frequency        = sfreq
-            cfg.sa.spectrogram.sample_frequency = sfreq
-            cfg.sa.spec.number_samples          = n_samples
-            cfg.sa.spectrogram.number_samples   = n_samples
-            cfg.sa.spec.show_data()
+    try:
+        rstrm = cfg.redis_instance.xread({f'responses:{req_id}:metadata'.encode(): '0-0'.encode()}, block=1000, count=1) 
+        print(f"received drf metadata:\n{rstrm}")
 
-            # global cfg.data_queue
-            cfg.data_queue = []
-            # global cfg.data_q_idx
-            cfg.data_q_idx = 0
-            break
+    except:
+        return "drf timeout?", dash.no_update
 
-    last_r_id = None
-    finished = False
-    while not finished:
-        time.sleep(0.1)
-        if last_r_id is None:
-            rstrm = cfg.redis_instance.xrange(f'responses:{req_id}:stream')
+    cfg.redis_instance.delete(f'responses:{req_id}:metadata')
+
+    metadata = orjson.loads(rstrm[0][1][0][1][b'data'])
+    print(f'got metadata from redis: {metadata}')
+    cfg.redis_instance.set("last-drf-id", "0-0")
+
+    cfg.spec_datas = {}
+    cfg.spec_datas['metadata'] = metadata
+
+    cfg.sa.spectrogram.clear_data()
+
+    y_max     = cfg.spec_datas['metadata']['y_max']
+    y_min     = cfg.spec_datas['metadata']['y_min']
+
+    sfreq     = metadata['sfreq']
+    n_samples = metadata['n_samples']
+
+    # set axes and other basic info for plots
+    cfg.sa.spec.yrange      = (y_min, y_max)
+    cfg.sa.spectrogram.zmin = y_min
+    cfg.sa.spectrogram.zmax = y_max
+
+    cfg.sa.centre_frequency = cfg.spec_datas['metadata']['cfreq']
+
+    cfg.sa.spec.number_samples = n_bins
+    cfg.sa.spectrogram.number_samples = n_bins
+
+
+    cfg.sa.spec.sample_frequency        = sfreq
+    cfg.sa.spectrogram.sample_frequency = sfreq
+    cfg.sa.spec.number_samples          = n_samples
+    cfg.sa.spectrogram.number_samples   = n_samples
+    cfg.sa.spec.show_data()
+
+    return dash.no_update, req_id
+
+
+@dash.callback(
+            dash.Output("drf-data-finished", 'data'),
+            dash.Output('drf-data', 'data'),
+            dash.Input('drf-interval', 'n_intervals'),
+            dash.State('request-id', 'data'),
+            prevent_initial_call=True)
+def get_next_drf_data(n, req_id):
+    """
+    Gets the next digitalRF data point to display, whenever drf-interval is fire
+    """
+
+    # TODO: fix this, the last id seen should not be stored in redis like this. 
+    last_r_id = cfg.redis_instance.get("last-drf-id").decode()
+
+    rstrm = cfg.redis_instance.xrange(f'responses:{req_id}:stream', min=f"({last_r_id}", count=1) 
+    if (len(rstrm) == 0):
+        for i in range(5):
+            rstrm = cfg.redis_instance.xrange(f'responses:{req_id}:stream', min=f"({last_r_id}", count=1)
+            time.sleep(0.1)
+            if len(rstrm) > 0:
+                break
         else:
-            rstrm = cfg.redis_instance.xrange(f'responses:{req_id}:stream', min=f'({last_r_id}')
-
-        if (len(rstrm) == 0):
             print("no update")
-            continue
-        
-        last_r_id = rstrm[-1][0].decode()
-        print(f"number of new data: {len(rstrm)}")
-        for d in rstrm:
-            datum = json.loads(d[1][b'data'])
-            if 'status' in datum:
-                # stream has finished
-                if datum['status'] == 'DONE':
-                    # unsubscribe from updates
-                    finished = True
-                    cfg.pubsub.punsubscribe(f'responses:{req_id}:*')
-                    print(f"FINISHED READING ALL DATA FROM REQUEST: {req_id}")
-                    break
-            else:
-                cfg.data_queue.append(datum)
+            raise dash.exceptions.PreventUpdate
 
-    print(f"data queue len: {len(cfg.data_queue)}")
 
-    stream_len = cfg.redis_instance.xlen(f'responses:{req_id}:stream')
-    print(f"LENGTH OF STREAM: {stream_len}")
+    new_r_id = rstrm[0][0].decode()
+    cfg.redis_instance.set("last-drf-id", new_r_id)
 
-    return None
+    d = orjson.loads(rstrm[0][1][b'data'])
+    if 'status' in d and d['status'] == 'DONE':
+        # stream has finished
+        print(f"FINISHED READING ALL DATA FROM REQUEST: {req_id}")
+        return "True", dash.no_update
 
+    return dash.no_update, d
 
 
 
 @dash.callback(
-    dash.Output(component_id='metadata-output', component_property='children'),
-    dash.Input('graph-interval', 'max_intervals'),
+    dash.Output('drf-interval', 'disabled'),
+    dash.Input("content-tabs", 'value'),
+    dash.Input("drf-data-finished", 'data'),
+    dash.Input({'type': 'drf-pause', 'index': dash.ALL}, 'n_clicks'),
+    dash.Input({'type': 'drf-play', 'index': dash.ALL}, 'n_clicks'),
+    dash.State({'type': 'drf-load', 'index': dash.ALL}, 'n_clicks'),
+
+    prevent_initial_call=True
+    )
+def handle_drf_interval(tab, drf_finished, pause, play, n):
+    """
+    Enable the drf interval, which gets new DRF data to display at a steady rate,
+    when the user has hit "play"
+
+    Disable it when the user has hit pause, or when all of the data has been played through
+    """
+    ctx = dash.callback_context
+
+    prop_id = ctx.triggered[0]['prop_id'].split('.')[0]
+    if n and n[0] > 0 and (prop_id == "request-id" or "play" in prop_id) and tab == 'content-tab-1':
+        return False
+
+    print("Disabling drf interval")
+    return True
+
+@dash.callback(
+    dash.Output({'type': 'drf-metadata-accordion', 'index': 0,}, 'children'),
+    dash.Input('request-id', 'data'),
+    dash.Input("content-tabs", 'value'),
 )
-def update_metadeta_output(n):
+def update_metadeta_output(req_id, tab):
     """
     update metadata section when new Digital RF data is loaded
-    The 'max-intervals' value gets updated when metadata is loaded
+    The 'request-id' value gets updated when metadata is loaded
     """
-    if cfg.spec_datas is None:
+    if not cfg.spec_datas:
+        return html.P("Metadata will appear here when you pick a Digital RF File")
+
+    ctx = dash.callback_context
+    prop_id = ctx.triggered[0]['prop_id'].split('.')[0]
+
+    # reset the metadata whenever the website tabs have been switched
+    if prop_id == "content-tabs":
         return None
 
     children = [
-        html.H4("Metadata:"),
         html.P(f"Sample Rate: {cfg.spec_datas['metadata']['sfreq']} samples/second"),
         html.P(f"Center Frequency: {cfg.spec_datas['metadata']['cfreq']} Hz"),
         html.P(f"Channel: {cfg.spec_datas['metadata']['channel']}"),
-
     ]
+
     return children
 
 
@@ -213,103 +272,139 @@ def update_metadeta_output(n):
     dash.Output(component_id='channel-div', component_property='children'),
     dash.Input('input-dir-button', 'n_clicks'),
     dash.State('drf-path', 'value'),
-
 )
-def start_redis_stream(n, drf_path):
-    # if (n % 2) == 1:
+def get_drf_channel_info(n, drf_path):
+    """
+    Get DRF Channel information when the user has supplied an input directory 
+    """
     print("clicked input dir button")
-    if n > 0:
-        print("clicked redis button")
-        req_id = cfg.redis_instance.get('request-id').decode()
-        cfg.redis_instance.incr('request-id')
-        
-
-        cfg.pubsub.subscribe(f'responses:{req_id}:channels')
-
-        print(f"publishing request {req_id} for {drf_path}")
-        # make a request for the channels from drf_path
-        cfg.redis_instance.publish(f'requests:{req_id}:channels', drf_path)
-
-        for msg in cfg.pubsub.listen():
-            print(f"got response message: {msg}")
-            channel = msg['channel'].decode()
-            if 'channels' in channel:
-                drf_channels = json.loads(msg['data'])
-                print(f'got channels from redis: {drf_channels}')
-
-                picker_options = [
-                    {'label': chan, 'value': chan} for chan in drf_channels
-                ]
-
-                children = [
-                    html.H4("Choose the channel:"),
-                    dcc.Dropdown(
-                        options=picker_options,
-                        value=drf_channels[0],
-                        id={
-                            'type': 'channel-picker', 'index': 0, 
-
-                        }
-                    ),
-                 ]
-
-                cfg.pubsub.unsubscribe(f'responses:{req_id}:channels')
-
-                return children
-
-
+    if n < 1: return dash.no_update
+    print("clicked redis button")
+    req_id = cfg.redis_instance.incr('request-id')
+    print(f'REQ ID: {req_id}')
     
-        # global redis_data
-        # for drf files, we want to push all data we haven't into a queue which gets outputted
-        redis_data = []
+    print(f"publishing request {req_id} for {drf_path}")
+    # make a request for the channels from drf_path
+    cfg.redis_instance.publish(f'requests:{req_id}:channels', drf_path)
 
 
-        return None
+    try:
+        rstrm = cfg.redis_instance.xread({f'responses:{req_id}:channels'.encode(): '0-0'.encode()}, block=1000, count=1) 
+        print(f"received drf channels:\n{rstrm}")
 
-    return None
+    except:
+        return dash.no_update
+
+    cfg.redis_instance.delete(f'responses:{req_id}:channels')
+    
+    drf_channels = orjson.loads(rstrm[0][1][0][1][b'data'])
+    print(f'got channels from redis: {drf_channels}')
+
+    picker_options = [
+        {'label': chan, 'value': chan} for chan in drf_channels
+    ]
+
+    children = [
+        html.Hr(),
+        dbc.Label("Digital RF Channel", html_for="channel-picker"),
+        dcc.Dropdown(
+            options=picker_options,
+            value=drf_channels[0],
+            id={
+                'type': 'channel-picker', 'index': 0, 
+
+            }
+        ),
+     ]
+
+    return children
+
+
 
 
 @dash.callback(
-    dash.Output(component_id='load-val', component_property='disabled'),
+    dash.Output({'type': 'drf-load', 'index': 0}, 'disabled'),
     dash.Input('input-dir-button', 'n_clicks'),
 )
 def redis_update_load_data_button(n):
+    """
+    Let the user load the DRF data once they have chosen an input directory
+    """
     if n < 1: return True
 
     return False
 
+
+
 @dash.callback(
-    dash.Output(component_id='reset-val', component_property='disabled'),
-    dash.Input('load-val', 'n_clicks'),
+    dash.Output({'type': 'drf-play', 'index': 0}, 'disabled'),
+    dash.Input({'type': 'drf-load', 'index': dash.ALL,}, 'n_clicks'),
+    dash.Input('drf-interval', 'disabled'),
 )
-def enable_replay_data_button(n):
-    if n < 1: return True
+def enable_play_data_button(n, interval_disabled):
+    """
+    Enable the play button when data has been loaded and data isn't currently streaming
+    """
+    if not interval_disabled:
+        return True
+
+    if n and n[0] < 1: return True
 
     return False
 
 @dash.callback(
-    dash.Output('reading-stream-graph-interval-placeholder', 'n_clicks'),
-    dash.Input('load-val', 'n_clicks'))
-def enable_graph_interval_after_clicking_load(n_clicks):
-    if n_clicks < 1:
-        return 0
+    dash.Output({'type': 'drf-rewind', 'index': 0}, 'disabled'),
+    dash.Input({'type': 'drf-load', 'index': dash.ALL,}, 'n_clicks'),
+)
+def enable_rewind_data_button(n):
+    """
+    Enable the rewind button when data has been loaded
+    """
+    if n and n[0] < 1: return True
 
-    return 1
-
-
-
+    return False
 
 @dash.callback(
-    dash.Output('reset-button-graph-interval-placeholder', 'n_clicks'),
-    dash.Input('reset-val', 'n_clicks'),
+    dash.Output({'type': 'drf-pause', 'index': 0}, 'disabled'),
+    dash.Input({'type': 'drf-load', 'index': dash.ALL,}, 'n_clicks'),
+    dash.Input('drf-interval', 'disabled'),
 )
-def handle_reset_button(n_clicks):
-    if n_clicks < 1:
-        return 0
+def enable_pause_data_button(n, interval_disabled):
+    """
+    Enable the play button when data has been loaded and data *is* currently streaming
+    """
+    if n and n[0] < 1: return True
 
-    # global cfg.data_q_idx
-    cfg.data_q_idx = 0
+    if interval_disabled:
+        return True
 
+    return False
+
+@dash.callback(
+    dash.Output('placeholder', 'data'),
+    dash.Input({'type': 'drf-rewind', 'index': dash.ALL,}, 'n_clicks'),
+)
+def handle_rewind_data_button(n):
+    """
+    When the rewind button is clicked, reset the last drf data point seen to the beginning
+    and clear the spectrogram waterfall plot
+    """
+    if n and n[0] < 1: raise dash.exceptions.PreventUpdate
+    print("resetting drf data?")
+    cfg.redis_instance.set("last-drf-id", "0-0")
+
+    # TODO: Move this into update_specgram_graph()?
     cfg.sa.spectrogram.clear_data()
+    return 0
 
-    return 1
+@dash.callback(
+    dash.Output("drf-form-modal", "is_open"),
+    dash.Input("open-modal-button", "n_clicks"), 
+    dash.Input("close-modal-button", "n_clicks"),
+    dash.Input({'type': 'drf-load', 'index': dash.ALL,}, 'n_clicks'),
+    dash.State("drf-form-modal", "is_open"),
+)
+def toggle_modal(n_open, n_close, n_load, is_open):
+    if n_open or n_close or n_load[0]:
+        return not is_open
+    return is_open

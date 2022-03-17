@@ -244,8 +244,8 @@ if __name__ == "__main__":
 
 
     # imitate command
-    # drf_plot.py -i "/home/semeterlab01/Desktop/04_antennas/openradar_antennas_wb_hf/" -c discone:0 -r 0:1000000 -p specgram -b 1024 -l
-    read_digital_rf_data(["/home/semeterlab01/Desktop/04_antennas/openradar_antennas_wb_hf/"], plot_file=None, plot_type="spectrum", channel="discone",
+    # drf_plot.py -i "C:/Users/yanag/openradar/openradar_antennas_wb_hf/" -c discone:0 -r 0:1000000 -p specgram -b 1024 -l
+    read_digital_rf_data(["C:/Users/yanag/openradar/openradar_antennas_wb_hf/"], plot_file=None, plot_type="spectrum", channel="discone",
 		subchan=0, sfreq=0.0, cfreq=None, atime=0, start_sample=0, stop_sample=1000000, modulus=None, integration=1, 
 		zscale=(0, 0), bins=1023, log_scale=True, detrend=False,msl_code_length=0,
         msl_baud_length=0)
