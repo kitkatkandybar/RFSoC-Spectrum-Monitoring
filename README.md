@@ -28,11 +28,7 @@ To run the application, first start running redis in a terminal on any PC. This 
 redis-server
 ```
 
-<<<<<<< Updated upstream
-### Board
-=======
 ### Board - Streaming data
->>>>>>> Stashed changes
 
 Connect the board to a PC via USB and to the power. It also needs to be connected to the Internet: via a router or through a computer with an Ethernet cable.
 
