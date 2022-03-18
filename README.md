@@ -28,13 +28,40 @@ To run the application, first start running redis in a terminal on any PC. This 
 redis-server
 ```
 
+<<<<<<< Updated upstream
 ### Board
+=======
+### Board - Streaming data
+>>>>>>> Stashed changes
 
 Connect the board to a PC via USB and to the power. It also needs to be connected to the Internet: via a router or through a computer with an Ethernet cable.
 
 To access the board, open a Jupyter notebook by browsing to http://192.168.3.1/lab on the PC connected to the board
 
-Before running the notebook "simplestream.py" make sure that the IP address of the redis connection host (located in variable called 'r')matches the IP of the device in which the redis-server is running
+Before running the notebook "simplestream.py" make sure that the IP address of the redis connection host (located in variable called 'r' of that file) matches the IP of the device in which the redis-server is running
+
+
+### Back End - Digital RF static data
+
+Run the back end in another terminal. There are two versions of the "back end", one which simulates a mock live stream, and one which handles and responds to requests for Digital RF data. 
+
+The location of the redis server can be configured in ./back_end/config.yaml 
+
+To run the Digital RF Handler:
+```
+conda activate rfsoc
+python ./back_end/drf_back_end.py
+```
+
+To run the mock livestream:
+
+```
+conda activate rfsoc
+python ./back_end/mock_stream.py
+```
+
+The first line activates the Anaconda environment we created earlier. 
+
 
 ### Front End
 
@@ -46,8 +73,6 @@ Run the front end in a third terminal by navigating to the location of the repos
 conda activate rfsoc
 python ./front_end/app.py
 ```
-
-The first line activates the Anaconda environment we created earlier. 
 
 The front end will read the data from the Redis stream and display it in the Dash web application, which can be accessed in a web browser at http://127.0.0.1:8050/
 .
