@@ -15,7 +15,6 @@ def set_transmitter_channel(channel, enable, gain, frequency):
 def run_stream():
     """Set ups a redis connection and updates data to the stream."""
     streamname = 'example'
-    #r = redis.Redis(host='128.197.173.66', port=6379, db=0)
     r = redis.Redis(host='168.122.1.151', port=6379, db=0)
     stream_name="bu_rfsoc"
     
