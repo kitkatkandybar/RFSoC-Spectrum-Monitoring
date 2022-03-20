@@ -23,12 +23,20 @@ conda env create -f environment.yaml
 A Redis server is necessary to run this application. Redis requires a UNIX machine. Downloading and installation instructions can be found here: https://redis.io/download.
 
 
-To run the application, first start running redis in a terminal. This can be done with the command:
+To run the application, first start running redis in a terminal on any PC. This can be done with the command:
 ```
 redis-server
 ```
 
-### Back End
+### Board - Streaming data
+
+Connect the board to a PC via USB and to the power. It also needs to be connected to the Internet: via a router or through a computer with an Ethernet cable.
+
+To access the board, open a Jupyter notebook by browsing to http://192.168.3.1/lab on the PC connected to the board
+
+Before running the notebook "simplestream.py" make sure that the IP address of the redis connection host (located in variable called 'r' of that file) matches the IP of the device in which the redis-server is running
+
+### Back End - Digital RF static data
 
 Run the back end in another terminal. There are two versions of the "back end", one which simulates a mock live stream, and one which handles and responds to requests for Digital RF data. 
 
@@ -51,14 +59,15 @@ The first line activates the Anaconda environment we created earlier.
 
 ### Front End
 
-The location of the redis server as well as the host/port for the Dash application canh be configured in in /front_end/config.py
+The location of the redis server as well as the host/port for the Dash application can be configured in in /front_end/config.yaml. Again, make sure that the IP address matches the one from the previous steps
 
-Run the front end in a third terminal by navigating to the location of the repository and running the following steps:
+Run the front end in a third terminal by navigating to the location of the repository and running the following steps (it can be on any PC, the one you want to display the data on):
 
 ```
 conda activate rfsoc
 python ./front_end/app.py
 ```
 
+The front end will read the data from the Redis stream and display it in the Dash web application, which can be accessed in a web browser at http://127.0.0.1:8050/
+.
 
-Finally, open the application in a web browser at http://127.0.0.1:8050/ .
