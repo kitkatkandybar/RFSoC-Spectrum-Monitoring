@@ -143,7 +143,6 @@ def update_spectrum_graph(stream_data, drf_data, log_scale, display_max, display
         return cfg.sa.plot
 
     prop_id = ctx.triggered[0]['prop_id'].split('.')[0]
-    # print("called update spectrum graph")
 
     if prop_id == "stream-data":
         cfg.sa.spec.show_data()
@@ -199,7 +198,6 @@ def update_spectrum_graph(stream_data, drf_data, log_scale, display_max, display
               dash.Input({'type': 'specgram-color-dropdown', 'index': dash.ALL,}, 'value'),
               dash.Input({'type': 'stream-metadata-accordion', 'index': dash.ALL,}, 'children'),
               dash.Input('request-id', 'data'),
-
               )
 
 def update_specgram_graph(stream_data, drf_data, log_scale, color,  stream_metadata, req_id):
@@ -232,7 +230,7 @@ def update_specgram_graph(stream_data, drf_data, log_scale, color,  stream_metad
         if log_scale and log_scale[0] == 'on':
             cfg.sa.spectrogram.zlabel =  "Power (dB)"
             if cfg.spec_datas:
-                cfg.sa.spectrogram.zmin   = 10.0 * np.log10(cfg.spec_datas['metadata']['y_min']+ 1e-12) - 3
+                cfg.sa.spectrogram.zmin   = 10.0 * np.log10(cfg.spec_datas['metadata']['y_min'] + 1e-12) - 3
                 cfg.sa.spectrogram.zmax   = 10.0 * np.log10(cfg.spec_datas['metadata']['y_max'] + 1e-12) + 10
             
         else:

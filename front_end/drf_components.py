@@ -107,7 +107,6 @@ drf_sidebar_components = html.Div(
                     drf_form_modal,
                     dbc.Button(
                         html.I(className="bi bi-play"),
-                        # id='reset-val',
                         id={'type': 'drf-play', 'index': 0,},
                         n_clicks=0,
                         disabled=True,

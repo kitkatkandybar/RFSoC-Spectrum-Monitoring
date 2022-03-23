@@ -31,7 +31,6 @@ def get_active_streams(n, tab):
     raise dash.exceptions.PreventUpdate
 
 
-
 @dash.callback(
             dash.Output({'type': 'stream-metadata-accordion', 'index': 0,}, 'children'),
             dash.Input({'type': 'stream-picker', 'index': dash.ALL,}, 'value'))
@@ -59,21 +58,55 @@ def update_stream_metadata(stream_names):
     sfreq     = float(metadata['sfreq'])
     n_samples = int(metadata['n_samples'])
 
-    cfg.sa.spec.centre_frequency        = float(metadata['cfreq'])
-    cfg.sa.spectrogram.centre_frequency = float(metadata['cfreq'])
+    cfreq = float(metadata['cfreq'])
+
+    cfg.sa.spec.centre_frequency        = cfreq
+    cfg.sa.spectrogram.centre_frequency = cfreq
     cfg.sa.spec.sample_frequency        = sfreq
     cfg.sa.spectrogram.sample_frequency = sfreq
     cfg.sa.spec.number_samples          = n_samples
     cfg.sa.spectrogram.number_samples   = n_samples
 
 
-    children = [
-        # html.H4("Metadata:"),
-        html.P(f"Name: {stream_names[0]}"),
-        html.P(f"Sample Rate: {metadata['sfreq']} samples/second"),
-        html.P(f"Center Frequency: {metadata['cfreq']} Hz"),
-        html.P(f"Channel: {metadata['channel']}"),
+    if sfreq > 1e9:
+        sfreq = f"{sfreq / 1e9} GHz"
+    elif sfreq > 1e6:
+        sfreq = f"{sfreq / 1e6} MHz"
+    elif sfreq > 1e3:
+        sfreq = f"{sfreq / 1e3} kHz"
+    else:
+        sfreq = f"{sfreq } Hz"
 
+
+    if cfreq > 1e9:
+        cfreq = f"{cfreq / 1e9} GHz"
+    elif cfreq > 1e6:
+        cfreq = f"{cfreq / 1e6} MHz"
+    elif sfreq > 1e3:
+        cfreq = f"{cfreq / 1e3} kHz"
+    else:
+        cfreq = f"{cfreq } Hz"
+
+    children = [
+        html.Table([
+            html.Tr([
+                html.Th("Name:"), 
+                html.Td(stream_names[0]),
+            ]),
+            html.Tr([
+                html.Th("Sample Rate:"), 
+                html.Td(sfreq),
+            ]),
+            html.Tr([
+                html.Th(["Center Frequency:"]), 
+                html.Td([cfreq]),
+            ]),
+            html.Tr([
+                html.Th(["Channel:"]), 
+                html.Td([cfg.spec_datas['metadata']['channel']]),
+            ]),
+        ], 
+        style={'width': '100%'}),
     ]
     return children
 
@@ -113,6 +146,7 @@ def handle_graph_stream_interval(play_n, pause_n, tab):
         return False
 
     return True
+
 
 @dash.callback(
     dash.Output({'type': 'play-stream-data', 'index': 0,}, 'disabled'),

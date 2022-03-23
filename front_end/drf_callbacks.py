@@ -259,10 +259,45 @@ def update_metadeta_output(req_id, tab):
     if prop_id == "content-tabs":
         return None
 
+    sfreq = cfg.spec_datas['metadata']['sfreq']
+
+    if sfreq > 1e9:
+        sfreq = f"{sfreq / 1e9} GHz"
+    elif sfreq > 1e6:
+        sfreq = f"{sfreq / 1e6} MHz"
+    elif sfreq > 1e3:
+        sfreq = f"{sfreq / 1e3} kHz"
+    else:
+        sfreq = f"{sfreq } Hz"
+
+    cfreq = cfg.spec_datas['metadata']['cfreq']
+
+    if cfreq > 1e9:
+        cfreq = f"{cfreq / 1e9} GHz"
+    elif cfreq > 1e6:
+        cfreq = f"{cfreq / 1e6} MHz"
+    elif sfreq > 1e3:
+        cfreq = f"{cfreq / 1e3} kHz"
+    else:
+        cfreq = f"{cfreq } Hz"
+
+
     children = [
-        html.P(f"Sample Rate: {cfg.spec_datas['metadata']['sfreq']} samples/second"),
-        html.P(f"Center Frequency: {cfg.spec_datas['metadata']['cfreq']} Hz"),
-        html.P(f"Channel: {cfg.spec_datas['metadata']['channel']}"),
+        html.Table([
+            html.Tr([
+                html.Th("Sample Rate:"), 
+                html.Td(sfreq),
+            ]),
+            html.Tr([
+                html.Th(["Center Frequency:"]), 
+                html.Td([cfreq]),
+            ]),
+            html.Tr([
+                html.Th(["Channel:"]), 
+                html.Td([cfg.spec_datas['metadata']['channel']]),
+            ]),
+        ], 
+        style={'width': '100%'}),
     ]
 
     return children

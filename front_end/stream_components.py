@@ -12,7 +12,8 @@ stream_sidebar_components = html.Div(
         [
             dbc.AccordionItem(
                 [
-                    html.H4("Choose the stream:"),
+                    # html.H4("Choose the stream:"),
+                    dbc.Label("Stream Name", html_for="stream-picker-div"),
                     html.Div(id='stream-picker-div', children=[
                     dcc.Dropdown(
                         id={
