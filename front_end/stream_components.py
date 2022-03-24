@@ -3,7 +3,7 @@ from dash import dcc
 from dash import html
 import dash_bootstrap_components as dbc
 
-from shared_components import get_graph_settings
+from shared_components import get_graph_settings, get_spectrum_graph_settings, get_specgram_graph_settings
 
 
 
@@ -54,6 +54,14 @@ stream_sidebar_components = html.Div(
             dbc.AccordionItem(
                 get_graph_settings(1),
                 title="Graph settings",
+            ),
+            dbc.AccordionItem(
+                get_spectrum_graph_settings(1),
+                title="Spectrum graph settings",
+            ),
+            dbc.AccordionItem(
+               get_specgram_graph_settings(1),
+                title="Spectrogram graph settings",
             ),
         ],
         id="stream-accordion",

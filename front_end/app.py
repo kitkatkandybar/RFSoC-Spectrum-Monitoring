@@ -97,6 +97,8 @@ def serve_layout():
         dcc.Store(id='stream-data'),
         dcc.Store(id='drf-data'),
         dcc.Store(id='drf-data-finished', data="False"),
+        dcc.Store(id='spectrum-y-min', data=-1),
+        dcc.Store(id='spectrum-y-max', data=-4),
         dcc.Store(id='placeholder'),
 
     ], fluid=True)
@@ -132,9 +134,14 @@ def render_tab_content(tab):
 
               dash.Input({'type': 'stream-metadata-accordion', 'index': dash.ALL,}, 'children'),
               dash.Input('request-id', 'data'),
+              dash.Input({'type': 'spectrum-y-min-input', 'index': dash.ALL,}, 'value'),
+              dash.Input({'type': 'spectrum-y-max-input', 'index': dash.ALL,}, 'value'),
 
               )
-def update_spectrum_graph(stream_data, drf_data, log_scale, display_max, display_min, stream_metadata, req_id):
+def update_spectrum_graph(
+        stream_data, drf_data, log_scale, 
+        display_max, display_min, stream_metadata, 
+        req_id, y_min_val, y_max_val):
     """ update the spectrum graph with new data, every time
     the Interval component fires"""
 
@@ -158,6 +165,10 @@ def update_spectrum_graph(stream_data, drf_data, log_scale, display_max, display
             d = 10.0 * np.log10(d + 1e-12)
         cfg.sa.spec.data        = d
         return cfg.sa.plot
+    elif "spectrum-y-min-input" in prop_id:
+        cfg.sa.spec.yrange = (y_min_val[0], cfg.sa.spec.yrange[1])
+    elif "spectrum-y-max-input" in prop_id:
+        cfg.sa.spec.yrange = (cfg.sa.spec.yrange[0], y_max_val[0])
     elif "max" in prop_id:
         if display_max[0] == 'on':
             cfg.sa.spec.display_max = True
@@ -168,7 +179,7 @@ def update_spectrum_graph(stream_data, drf_data, log_scale, display_max, display
             cfg.sa.spec.display_min = True
         else:
             cfg.sa.spec.display_min = False
-
+    
     else:
         # log scale option has been modified
         if log_scale and log_scale[0] == 'on':
@@ -198,9 +209,16 @@ def update_spectrum_graph(stream_data, drf_data, log_scale, display_max, display
               dash.Input({'type': 'specgram-color-dropdown', 'index': dash.ALL,}, 'value'),
               dash.Input({'type': 'stream-metadata-accordion', 'index': dash.ALL,}, 'children'),
               dash.Input('request-id', 'data'),
+              dash.Input({'type': 'specgram-y-min-input', 'index': dash.ALL,}, 'value'),
+              dash.Input({'type': 'specgram-y-max-input', 'index': dash.ALL,}, 'value'),
+
               )
 
-def update_specgram_graph(stream_data, drf_data, log_scale, color,  stream_metadata, req_id):
+def update_specgram_graph(
+        stream_data, drf_data, log_scale, 
+        color,  stream_metadata, req_id, 
+        y_min_val, y_max_val):
+
     """ update the spectogram plot with new data, every time
     the Interval component fires"""
     ctx = dash.callback_context
@@ -224,7 +242,10 @@ def update_specgram_graph(stream_data, drf_data, log_scale, color,  stream_metad
     elif "color" in prop_id:
         print(f"Changing color to: {color[0]}")
         cfg.sa.spectrogram.cmap = color[0]
-
+    elif "specgram-y-min-input" in prop_id:
+        cfg.sa.spectrogram.zmin = y_min_val[0]
+    elif "specgram-y-max-input" in prop_id:
+        cfg.sa.spectrogram.zmax = y_max_val[0]
     else:
         # log scale option has been modified
         if log_scale and log_scale[0] == 'on':
