@@ -170,6 +170,18 @@ def handle_disable_pause_stream_button(play_disabled, stream_val):
     return False
 
 
+@dash.callback(
+    dash.Output("download-modal", "is_open"),
+    dash.Input("open-download-modal-button", "n_clicks"), 
+    dash.Input("close-download-modal-button", "n_clicks"),
+    dash.Input({'type': 'download-button', 'index': dash.ALL,}, 'n_clicks'),
+    dash.State("download-modal", "is_open"),
+)
+def toggle_download_modal(n_open, n_close, n_load, is_open):
+    if n_open or n_close or n_load[0]:
+        return not is_open
+    return is_open
+
 
 
 

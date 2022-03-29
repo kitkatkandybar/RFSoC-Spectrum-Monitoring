@@ -104,6 +104,16 @@ def get_drf_channels(input_file):
         traceback.print_exc(file=sys.stdout)
         raise
 
+def get_n_samples(input_file, channel):
+    try:
+        drf = digital_rf.DigitalRFReader(input_file)
+        ustart, ustop = drf.get_bounds(channel)
+        n_total_samples = ustop - ustart
+        return n_total_samples
+    except:
+        print(("problem loading file %s" % f))
+        traceback.print_exc(file=sys.stdout)
+        raise
 
 def read_digital_rf_data(input_files, plot_file=None, plot_type="spectrum", channel="",
 		subchan=0, sfreq=0.0, cfreq=None, atime=0, start_sample=0, stop_sample=0, modulus=None, integration=1, 
@@ -120,6 +130,8 @@ def read_digital_rf_data(input_files, plot_file=None, plot_type="spectrum", chan
 
             drf = digital_rf.DigitalRFReader(f)
 
+
+
             chans = drf.get_channels()
             if channel == "":
                 chidx = 0
@@ -128,9 +140,11 @@ def read_digital_rf_data(input_files, plot_file=None, plot_type="spectrum", chan
 
             print(f"chans: {chans}, chidx: {chidx}")
             ustart, ustop = drf.get_bounds(chans[chidx])
+            n_total_samples = ustop - ustart
             print(f"ustart: {ustart}, ustop: {ustop}")
 
             print("loading metadata")
+
 
             drf_properties = drf.get_properties( chans[chidx])
             print(f"drf properties: {drf_properties}")
@@ -197,8 +211,8 @@ def read_digital_rf_data(input_files, plot_file=None, plot_type="spectrum", chan
     # 'spectrum' plot type also works for spectrogram data 
     if plot_type == "spectrum":
         data = { 'metadata': {'cfreq': cfreq, 'sfreq': sfreq, 'channel': chans[chidx]}, 'data': []}
-        if metadata_samples:
-            data['metadata_samples'] = metadata_samples
+        # if metadata_samples:
+            # data['metadata_samples'] = metadata_samples
         gen = spectrum_process(
             d,
             sfreq,

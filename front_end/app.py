@@ -99,6 +99,7 @@ def serve_layout():
         dcc.Store(id='drf-data-finished', data="False"),
         dcc.Store(id='spectrum-y-min', data=-1),
         dcc.Store(id='spectrum-y-max', data=-4),
+        dcc.Store(id='drf-n-samples', data=0),
         dcc.Store(id='placeholder'),
 
     ], fluid=True)

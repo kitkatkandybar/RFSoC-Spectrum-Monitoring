@@ -6,6 +6,7 @@ import dash_bootstrap_components as dbc
 from shared_components import get_graph_settings, get_spectrum_graph_settings, get_specgram_graph_settings
 
  
+DRF_TAB_IDX = 0
 
 drf_form_modal = html.Div(
     [
@@ -47,6 +48,9 @@ drf_form_modal = html.Div(
                         type="circle",
                     ),
                     html.Div(id='sample-div', style={'width': '100%'},),
+                    
+                  
+            
                     html.Div(id='bins-div', style={'width': '100%'},),
 
                     ]),
@@ -105,12 +109,15 @@ drf_sidebar_components = html.Div(
             dbc.AccordionItem(
                 [
                     drf_form_modal,
+                    html.Hr(),
+                    dbc.Label("Playback controls", html_for="drf-path"),
+                    html.Br(),
                     dbc.Button(
                         html.I(className="bi bi-play"),
                         id={'type': 'drf-play', 'index': 0,},
                         n_clicks=0,
                         disabled=True,
-                        color="secondary",
+                        color="primary",
                     ),
                     dbc.Button(
                         html.I(className="bi bi-pause-fill"),
@@ -124,7 +131,7 @@ drf_sidebar_components = html.Div(
                         id={'type': 'drf-rewind', 'index': 0,},
                         n_clicks=0,
                         disabled=True,
-                        color="secondary",
+                        color="primary",
                     ),
                 ],
                 title="DigitalRF Options",
@@ -139,15 +146,15 @@ drf_sidebar_components = html.Div(
                 }
             ),
             dbc.AccordionItem(
-                get_graph_settings(0),
+                get_graph_settings(DRF_TAB_IDX),
                 title="Graph settings",
             ),
             dbc.AccordionItem(
-                get_spectrum_graph_settings(0),
+                get_spectrum_graph_settings(DRF_TAB_IDX),
                 title="Spectrum graph settings",
             ),
             dbc.AccordionItem(
-               get_specgram_graph_settings(0),
+               get_specgram_graph_settings(DRF_TAB_IDX),
                 title="Spectrogram graph settings",
             ),
         ],
