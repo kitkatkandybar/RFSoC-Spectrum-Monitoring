@@ -67,6 +67,11 @@ def update_stream_metadata(stream_names):
     cfg.sa.spec.number_samples          = n_samples
     cfg.sa.spectrogram.number_samples   = n_samples
 
+    # TODO: Set the decimation factor some other way?
+    cfg.sa.spectrogram.decimation_factor = 2
+    cfg.sa.spec.decimation_factor        = 2
+
+
 
     if sfreq > 1e9:
         sfreq = f"{sfreq / 1e9} GHz"

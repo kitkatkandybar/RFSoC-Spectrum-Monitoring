@@ -169,6 +169,11 @@ def send_redis_request_and_get_metadata(n_clicks, drf_path, channel, start, stop
     sfreq     = metadata['sfreq']
     n_samples = metadata['n_samples']
 
+    decimation = metadata['metadata_samples']['processing']['decimation']
+    cfg.sa.spectrogram.decimation_factor = decimation
+    cfg.sa.spec.decimation_factor        = decimation
+
+
     # set axes and other basic info for plots
     cfg.sa.spec.yrange      = (y_min, y_max)
     cfg.sa.spectrogram.zmin = y_min
@@ -254,6 +259,22 @@ def handle_drf_interval(tab, drf_finished, pause, play, n):
     print("Disabling drf interval")
     return True
 
+
+def convert_to_hz_units(val):
+    if val > 1e9:
+        s = f"{val / 1e9} GHz"
+    elif val > 1e6:
+        s = f"{val / 1e6} MHz"
+    elif val > 1e3:
+        s = f"{val / 1e3} kHz"
+    else:
+        s = f"{val } Hz"
+
+    return s
+
+
+
+
 @dash.callback(
     dash.Output({'type': 'drf-metadata-accordion', 'index': 0,}, 'children'),
     dash.Input('request-id', 'data'),
@@ -274,45 +295,61 @@ def update_metadeta_output(req_id, tab):
     if prop_id == "content-tabs":
         return None
 
-    sfreq = cfg.spec_datas['metadata']['sfreq']
-
-    if sfreq > 1e9:
-        sfreq = f"{sfreq / 1e9} GHz"
-    elif sfreq > 1e6:
-        sfreq = f"{sfreq / 1e6} MHz"
-    elif sfreq > 1e3:
-        sfreq = f"{sfreq / 1e3} kHz"
-    else:
-        sfreq = f"{sfreq } Hz"
-
-    cfreq = cfg.spec_datas['metadata']['cfreq']
-
-    if cfreq > 1e9:
-        cfreq = f"{cfreq / 1e9} GHz"
-    elif cfreq > 1e6:
-        cfreq = f"{cfreq / 1e6} MHz"
-    elif sfreq > 1e3:
-        cfreq = f"{cfreq / 1e3} kHz"
-    else:
-        cfreq = f"{cfreq } Hz"
 
 
     children = [
+        dbc.Label("General"),
         html.Table([
             html.Tr([
                 html.Th("Sample Rate:"), 
-                html.Td(sfreq),
+                html.Td(convert_to_hz_units(cfg.spec_datas['metadata']['sfreq'])),
             ]),
             html.Tr([
                 html.Th(["Center Frequency:"]), 
-                html.Td([cfreq]),
+                html.Td(convert_to_hz_units(cfg.spec_datas['metadata']['cfreq'])),
             ]),
             html.Tr([
                 html.Th(["Channel:"]), 
                 html.Td([cfg.spec_datas['metadata']['channel']]),
             ]),
-        ], 
-        style={'width': '100%'}),
+        ]), 
+        html.Hr(),
+        dbc.Label("Processing"),
+        html.Table([
+            html.Tr([
+                html.Th("Decimation factor:"), 
+                html.Td(cfg.spec_datas['metadata']['metadata_samples']['processing']['decimation']),
+            ]),
+            html.Tr([
+                html.Th(["Interpolation:"]), 
+                html.Td(cfg.spec_datas['metadata']['metadata_samples']['processing']['interpolation']),
+            ]),
+            html.Tr([
+                html.Th(["Scaling:"]), 
+                html.Td(cfg.spec_datas['metadata']['metadata_samples']['processing']['scaling']),
+            ]),
+        ]), 
+        html.Hr(),
+        dbc.Label("Receiver"),
+        html.Table([
+            html.Tr([
+                html.Th(["ID:"]), 
+                html.Td(cfg.spec_datas['metadata']['metadata_samples']['receiver']['id']),
+            ]),
+            html.Tr([
+                html.Th("Antenna:"), 
+                html.Td(cfg.spec_datas['metadata']['metadata_samples']['receiver']['antenna']),
+            ]),
+            html.Tr([
+                html.Th(["Clock rate:"]), 
+                html.Td(convert_to_hz_units(cfg.spec_datas['metadata']['metadata_samples']['receiver']['clock_rate'])),
+            ]),
+            html.Tr([
+                html.Th(["Description:"]), 
+                html.Td(cfg.spec_datas['metadata']['metadata_samples']['receiver']['description']),
+            ]),
+        ]), 
+        # style={'width': '100%'}),
     ]
 
     return children

@@ -18,6 +18,16 @@ r = None
 p = None
 
 
+class NumpyEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.longdouble):
+            return float(obj)
+        if isinstance(obj, np.int64):
+            return int(obj)
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return json.JSONEncoder.default(self, obj)
+
 def drf_requests_handler(msg):
     print(f'got message: {msg}')
 
@@ -60,7 +70,7 @@ def drf_requests_handler(msg):
 
             # spec_datas['metadata'] = spec_datas['metadata_samples'] 
 
-            spec_datas['metadata'] = spec_datas['metadata']
+            # spec_datas['metadata'] = spec_datas['metadata']
             spec_datas['metadata']['y_max']          = float(y_max)
             spec_datas['metadata']['y_min']          = float(y_min)
             spec_datas['metadata']['n_samples']      = spec_datas['data'][0]['data'].shape[0]
@@ -69,7 +79,7 @@ def drf_requests_handler(msg):
             print(spec_datas['metadata'])
 
 
-            r.xadd(f'responses:{req_id}:metadata', {'data': json.dumps(spec_datas['metadata'])}) 
+            r.xadd(f'responses:{req_id}:metadata', {'data': json.dumps(spec_datas['metadata'], cls=NumpyEncoder)}) 
 
 
             print(f"going to send {n_data_points} data points")

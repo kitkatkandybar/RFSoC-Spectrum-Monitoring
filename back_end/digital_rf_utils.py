@@ -211,8 +211,8 @@ def read_digital_rf_data(input_files, plot_file=None, plot_type="spectrum", chan
     # 'spectrum' plot type also works for spectrogram data 
     if plot_type == "spectrum":
         data = { 'metadata': {'cfreq': cfreq, 'sfreq': sfreq, 'channel': chans[chidx]}, 'data': []}
-        # if metadata_samples:
-            # data['metadata_samples'] = metadata_samples
+        if metadata_samples:
+            data['metadata']['metadata_samples'] = metadata_samples.popitem()[1]
         gen = spectrum_process(
             d,
             sfreq,
