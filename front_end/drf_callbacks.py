@@ -14,7 +14,7 @@ import config as cfg
     dash.Output(component_id='sample-div', component_property='children'),
     dash.Input('input-dir-button', 'n_clicks'),
 )
-def update_sample_slider(n):
+def update_sample_input(n):
     """
     Displays the sample slider once the user has selected a DigitalRF directory
     """
@@ -91,7 +91,7 @@ def update_bins_slider(n):
 
     children = [
         html.Hr(),
-        dbc.Label("Number of Bins", html_for="bins-slider"),
+        dbc.Label("Number of FFT Bins", html_for="bins-slider"),
         dcc.Slider(
             id={
                 'type': 'bins-slider', 'index': 0, 
@@ -121,8 +121,10 @@ def update_bins_slider(n):
     dash.State({'type': 'start-sample-input', 'index': dash.ALL,}, 'value'),
     dash.State({'type': 'stop-sample-input', 'index': dash.ALL,}, 'value'),
     dash.State({'type': 'bins-slider', 'index': dash.ALL,}, 'value'),
+    dash.State({'type': 'modulus-input', 'index': dash.ALL,}, 'value'),
+    dash.State({'type': 'integration-input', 'index': dash.ALL,}, 'value'),
 )
-def send_redis_request_and_get_metadata(n_clicks, drf_path, channel, start, stop, bins):
+def send_redis_request_and_get_metadata(n_clicks, drf_path, channel, start, stop, bins, modulus, integration):
     """
     Sends a request to the back end for DigitalRF data, and receives the metadata from the request
     """
@@ -139,7 +141,9 @@ def send_redis_request_and_get_metadata(n_clicks, drf_path, channel, start, stop
         'channel'      : channel[0],
         'start_sample' : start[0],
         'stop_sample'  : stop[0],
-        'bins'         : n_bins
+        'bins'         : n_bins,
+        'modulus'      : modulus[0],
+        'integration'  : integration[0],
     }
 
     cfg.redis_instance.publish(f'requests:{req_id}:data', orjson.dumps(req))
@@ -349,6 +353,43 @@ def update_metadeta_output(req_id, tab):
                 html.Td(cfg.spec_datas['metadata']['metadata_samples']['receiver']['description']),
             ]),
         ]), 
+        html.Hr(),
+        dbc.Label("Request Parameters"),
+        html.Table([
+            html.Tr([
+                html.Th(["File path:"]), 
+                html.Td(cfg.spec_datas['metadata']['req_params']['filepath']),
+            ]),
+            html.Tr([
+                html.Th("Channel:"), 
+                html.Td(cfg.spec_datas['metadata']['req_params']['channel']),
+            ]),
+            html.Tr([
+                html.Th(["Start Sample:"]), 
+                html.Td(cfg.spec_datas['metadata']['req_params']['start_sample']),
+            ]),
+            html.Tr([
+                html.Th(["Stop Sample:"]), 
+                html.Td(cfg.spec_datas['metadata']['req_params']['stop_sample']),
+            ]),
+            html.Tr([
+                html.Th(["Modulus:"]), 
+                html.Td(cfg.spec_datas['metadata']['req_params']['modulus']),
+            ]),
+            html.Tr([
+                html.Th(["Integration:"]), 
+                html.Td(cfg.spec_datas['metadata']['req_params']['integration']),
+            ]),
+            html.Tr([
+                html.Th(["FFT Bins:"]), 
+                html.Td(cfg.spec_datas['metadata']['req_params']['bins']),
+            ]),
+            html.Tr([
+                html.Th(["Points:"]), 
+                html.Td(cfg.spec_datas['metadata']['req_params']['n_points']),
+            ]),
+        ], style={'overflow': 'scroll', 'width': '100%'}), 
+
         # style={'width': '100%'}),
     ]
 
@@ -461,6 +502,46 @@ def update_sample_max_range(n):
 )
 def update_sample_max_val(n):
     return n
+
+@dash.callback(
+    dash.Output(component_id='int-mod-div', component_property='children'),
+    dash.Input('input-dir-button', 'n_clicks'),
+)
+def update_integration_and_modulus(n):
+    if n < 1: return None
+
+    children = [
+        html.Hr(),
+        dbc.Row([
+            dbc.Label("Modulus", width="auto"),
+            dbc.Col(
+
+            dcc.Input(
+                id={
+                    'type': 'modulus-input', 'index': 0, 
+                },
+                type="number",
+                value=1,
+                min=1,
+                step=1, debounce=True,
+            )),
+            dbc.Label("Integration", width="auto"),
+            dbc.Col(
+
+            dcc.Input(
+                id={
+                    'type': 'integration-input', 'index': 0, 
+                },
+                type="number",
+                value=1,
+                min=1,
+                step=1, debounce=True,
+            )), 
+        ]),
+           
+    ]
+
+    return children
 
 
 

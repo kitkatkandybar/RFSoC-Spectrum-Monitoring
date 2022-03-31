@@ -54,12 +54,23 @@ def drf_requests_handler(msg):
         req_params = orjson.loads(msg['data'])
         print(f'got request for data: {req_params} ')
 
+        start_sample = int(req_params['start_sample'])
+        stop_sample  = int(req_params['stop_sample'])
+        modulus      = 10000
+        integration  = 10
+        bins         = int(req_params['bins'])
+        filepath     = req_params['drf_path']
+        drf_chan     = req_params['channel']
+
+
+
+
         r.delete(f'responses:{req_id}:stream')
         try:
-            spec_datas = read_digital_rf_data([req_params['drf_path']], plot_file=None, plot_type="spectrum", channel=req_params['channel'],
+            spec_datas = read_digital_rf_data([filepath], plot_file=None, plot_type="spectrum", channel=drf_chan,
                 subchan=0, sfreq=0.0, cfreq=None, atime=0,
-                start_sample=int(req_params['start_sample']), stop_sample=int(req_params['stop_sample']), modulus=10000, integration=1, 
-                zscale=(0, 0), bins=int(req_params['bins']), log_scale=False, detrend=False,msl_code_length=0,
+                start_sample=start_sample, stop_sample=stop_sample, modulus=modulus, integration=integration, 
+                zscale=(0, 0), bins=bins, log_scale=False, detrend=False,msl_code_length=0,
                 msl_baud_length=0)
 
 
@@ -68,13 +79,23 @@ def drf_requests_handler(msg):
 
             n_data_points = len(spec_datas['data'])
 
-            # spec_datas['metadata'] = spec_datas['metadata_samples'] 
+            req_params = {
+                'filepath':     filepath,
+                'channel':      drf_chan,
+                'start_sample': start_sample,
+                'stop_sample':  stop_sample,
+                'modulus':      modulus,
+                'integration':  integration,
+                'bins':         bins,
+                'n_points':     n_data_points,
+            }
 
-            # spec_datas['metadata'] = spec_datas['metadata']
+
             spec_datas['metadata']['y_max']          = float(y_max)
             spec_datas['metadata']['y_min']          = float(y_min)
             spec_datas['metadata']['n_samples']      = spec_datas['data'][0]['data'].shape[0]
             spec_datas['metadata']['n_data_points']  = n_data_points
+            spec_datas['metadata']['req_params']     = req_params
 
             print(spec_datas['metadata'])
 

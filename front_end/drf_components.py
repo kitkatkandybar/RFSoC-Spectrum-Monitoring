@@ -48,11 +48,9 @@ drf_form_modal = html.Div(
                         type="circle",
                     ),
                     html.Div(id='sample-div', style={'width': '100%'},),
-                    
-                  
             
                     html.Div(id='bins-div', style={'width': '100%'},),
-
+                    html.Div(id='int-mod-div', style={'width': '100%'},),
                     ]),
                 dbc.ModalFooter([
                     dbc.Button(
