@@ -101,6 +101,7 @@ def serve_layout():
         dcc.Store(id='spectrum-y-max', data=-4),
         dcc.Store(id='drf-n-samples', data=0),
         dcc.Store(id='placeholder'),
+        dcc.Store(id='download-placeholder'),
 
     ], fluid=True)
 

@@ -58,7 +58,7 @@ def update_sample_input(n):
                 color="secondary",
                 id="sample-range-formtext"
             ),
-            ]),
+        ]),
 
     ]
 
@@ -116,7 +116,7 @@ def update_bins_slider(n):
     dash.Output('drf-err', 'children'),
     dash.Output('request-id', 'data'),
     dash.Input({'type': 'drf-load', 'index': dash.ALL}, 'n_clicks'),
-    dash.State('drf-path', 'value'),
+    dash.State({'type': 'drf-path', 'index': dash.ALL,}, 'value'),
     dash.State({'type': 'channel-picker', 'index': dash.ALL,}, 'value'),
     dash.State({'type': 'start-sample-input', 'index': dash.ALL,}, 'value'),
     dash.State({'type': 'stop-sample-input', 'index': dash.ALL,}, 'value'),
@@ -137,7 +137,7 @@ def send_redis_request_and_get_metadata(n_clicks, drf_path, channel, start, stop
     n_bins = 2**bins[0]
 
     req = {
-        'drf_path'     : drf_path,
+        'drf_path'     : drf_path[0],
         'channel'      : channel[0],
         'start_sample' : start[0],
         'stop_sample'  : stop[0],
@@ -399,7 +399,7 @@ def update_metadeta_output(req_id, tab):
 @dash.callback(
     dash.Output(component_id='channel-div', component_property='children'),
     dash.Input('input-dir-button', 'n_clicks'),
-    dash.State('drf-path', 'value'),
+    dash.State({'type': 'drf-path', 'index': dash.ALL,}, 'value'),
 )
 def get_drf_channel_info(n, drf_path):
     """
@@ -407,9 +407,9 @@ def get_drf_channel_info(n, drf_path):
     """
     if n < 1: return dash.no_update
     req_id = cfg.redis_instance.incr('request-id')
-    print(f"publishing request {req_id} for {drf_path}")
+    print(f"publishing request {req_id} for {drf_path[0]}")
     # make a request for the channels from drf_path
-    cfg.redis_instance.publish(f'requests:{req_id}:channels', drf_path)
+    cfg.redis_instance.publish(f'requests:{req_id}:channels', drf_path[0])
 
 
     try:
@@ -446,7 +446,8 @@ def get_drf_channel_info(n, drf_path):
 @dash.callback(
     dash.Output('drf-n-samples', 'data'),
     dash.Input({'type': 'channel-picker', 'index': dash.ALL,}, 'value'),
-    dash.State('drf-path', 'value'),
+    dash.State({'type': 'drf-path', 'index': dash.ALL,}, 'value'),
+
     prevent_initial_call=True
 )
 def get_drf_sample_range(chan, drf_path):
@@ -454,8 +455,8 @@ def get_drf_sample_range(chan, drf_path):
         return dash.no_update
     # send a request for samples
     req_id = cfg.redis_instance.incr('request-id')
-    cfg.redis_instance.publish(f'requests:{req_id}:samples', orjson.dumps({'path': drf_path, 'channel': chan[0]}))
-    print(f"publishing request {req_id} for {drf_path} and chan {chan[0]}")
+    cfg.redis_instance.publish(f'requests:{req_id}:samples', orjson.dumps({'path': drf_path[0], 'channel': chan[0]}))
+    print(f"publishing request {req_id} for {drf_path[0]} and chan {chan[0]}")
 
 
     # wait for the response in a stream

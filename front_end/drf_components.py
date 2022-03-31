@@ -19,7 +19,7 @@ drf_form_modal = html.Div(
                     dbc.Row([
                         dbc.Col(
                             dcc.Input(
-                                id="drf-path", 
+                                id={'type': "drf-path", 'index': 0,}, 
                                 type="text",
                                 value="",
                                 style={'width': '100%'}
@@ -108,7 +108,7 @@ drf_sidebar_components = html.Div(
                 [
                     drf_form_modal,
                     html.Hr(),
-                    dbc.Label("Playback controls", html_for="drf-path"),
+                    dbc.Label("Playback controls"),
                     html.Br(),
                     dbc.Button(
                         html.I(className="bi bi-play"),

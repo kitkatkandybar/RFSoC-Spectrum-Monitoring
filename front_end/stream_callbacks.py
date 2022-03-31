@@ -188,6 +188,79 @@ def toggle_download_modal(n_open, n_close, n_load, is_open):
     return is_open
 
 
+@dash.callback(
+            dash.Output({'type': 'download-board-picker', 'index': dash.ALL,}, 'options'),
+            dash.Input('download-board-picker-div', 'n_clicks'),
+            dash.State("content-tabs", 'value'))
+def get_active_download_boards(n, tab):
+    """
+    get the currently active streams from Redis when the streams tab is clicked
+    """
+    if n and tab == 'content-tab-2':
+        boards = cfg.redis_instance.smembers("active_command_boards")
+        print(f"GOT STREAMS: {boards}")
+        picker_options = [
+            {'label': s.decode(), 'value': s.decode()} for s in boards
+        ]
+
+        return [picker_options]
+
+
+    raise dash.exceptions.PreventUpdate
+
+
+@dash.callback(
+    dash.Output('download-placeholder', 'data'),
+    dash.Input({'type': 'download-button', 'index': dash.ALL,}, 'n_clicks'),
+    dash.State({'type': 'download-board-picker', 'index': dash.ALL,}, 'value'),
+    dash.State({'type': 'duration-download-input', 'index': dash.ALL,}, 'value'),
+    dash.State({'type': 'download-time-unit-dropdown', 'index': dash.ALL,}, 'value'),
+    dash.State({'type': 'download-name-input', 'index': dash.ALL,}, 'value'),
+)
+def handle_download_request(n, board, duration, time_unit, name):
+    if not n or n[0] < 1:
+        raise dash.exceptions.PreventUpdate
+
+
+    if time_unit[0] == 's':
+        dur = duration[0]
+    elif time_unit[0] == "ms":
+        dur = duration[0] / 1e3
+    else: # usec
+        dur = duration[0] / 1e6
+
+
+    board_name = board[0]
+
+
+    req = {
+        'duration'     : dur
+    }
+
+    req_id = cfg.redis_instance.incr(f'board-request-id:{board_name}')
+
+    print(f"DOWNLOAD REQ ID: {req_id} for BOARD NAME: {board_name}")
+    cfg.redis_instance.publish(f'board-requests:{board_name}:{req_id}', orjson.dumps(req))
+
+    return 0
+
+
+# @dash.callback(
+#     dash.Output({'type': 'download-name-input', 'index': 0}, 'disabled'),
+#     dash.Input('input-dir-button', 'n_clicks'),
+# )
+# def redis_update_download_data_button(n):
+#     """
+#     Let the user load the DRF data once they have chosen an input directory
+#     """
+#     if n < 1: return True
+
+#     return False
+
+
+
+
+
 
 
 
