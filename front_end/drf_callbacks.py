@@ -1,11 +1,14 @@
+import zipfile
+
 import dash
 from dash import dcc
 from dash import html
 import dash_bootstrap_components as dbc
 
 import time
-
+import digital_rf
 import orjson
+
 
 import config as cfg
 
@@ -150,7 +153,7 @@ def send_redis_request_and_get_metadata(n_clicks, drf_path, channel, start, stop
 
 
     try:
-        rstrm = cfg.redis_instance.xread({f'responses:{req_id}:metadata'.encode(): '0-0'.encode()}, block=3000, count=1) 
+        rstrm = cfg.redis_instance.xread({f'responses:{req_id}:metadata'.encode(): '0-0'.encode()}, block=10000, count=1) 
         print(f"received drf metadata:\n{rstrm}")
 
     except:
@@ -300,98 +303,101 @@ def update_metadeta_output(req_id, tab):
         return None
 
 
+    # TODO: Check to make sure all of these keys exist before dereferencing them
+    try:
+        children = [
+            dbc.Label("General"),
+            html.Table([
+                html.Tr([
+                    html.Th("Sample Rate:"), 
+                    html.Td(convert_to_hz_units(cfg.spec_datas['metadata']['sfreq'])),
+                ]),
+                html.Tr([
+                    html.Th(["Center Frequency:"]), 
+                    html.Td(convert_to_hz_units(cfg.spec_datas['metadata']['cfreq'])),
+                ]),
+                html.Tr([
+                    html.Th(["Channel:"]), 
+                    html.Td([cfg.spec_datas['metadata']['channel']]),
+                ]),
+            ]), 
+            html.Hr(),
+            dbc.Label("Processing"),
+            html.Table([
+                html.Tr([
+                    html.Th("Decimation factor:"), 
+                    html.Td(cfg.spec_datas['metadata']['metadata_samples']['processing']['decimation']),
+                ]),
+                html.Tr([
+                    html.Th(["Interpolation:"]), 
+                    html.Td(cfg.spec_datas['metadata']['metadata_samples']['processing']['interpolation']),
+                ]),
+                html.Tr([
+                    html.Th(["Scaling:"]), 
+                    html.Td(cfg.spec_datas['metadata']['metadata_samples']['processing']['scaling']),
+                ]),
+            ]), 
+            html.Hr(),
+            dbc.Label("Receiver"),
+            html.Table([
+                html.Tr([
+                    html.Th(["ID:"]), 
+                    html.Td(cfg.spec_datas['metadata']['metadata_samples']['receiver']['id']),
+                ]),
+                html.Tr([
+                    html.Th("Antenna:"), 
+                    html.Td(cfg.spec_datas['metadata']['metadata_samples']['receiver']['antenna']),
+                ]),
+                html.Tr([
+                    html.Th(["Clock rate:"]), 
+                    html.Td(convert_to_hz_units(cfg.spec_datas['metadata']['metadata_samples']['receiver']['clock_rate'])),
+                ]),
+                html.Tr([
+                    html.Th(["Description:"]), 
+                    html.Td(cfg.spec_datas['metadata']['metadata_samples']['receiver']['description']),
+                ]),
+            ]), 
+            html.Hr(),
+            dbc.Label("Request Parameters"),
+            html.Table([
+                html.Tr([
+                    html.Th(["File path:"]), 
+                    html.Td(cfg.spec_datas['metadata']['req_params']['filepath']),
+                ]),
+                html.Tr([
+                    html.Th("Channel:"), 
+                    html.Td(cfg.spec_datas['metadata']['req_params']['channel']),
+                ]),
+                html.Tr([
+                    html.Th(["Start Sample:"]), 
+                    html.Td(cfg.spec_datas['metadata']['req_params']['start_sample']),
+                ]),
+                html.Tr([
+                    html.Th(["Stop Sample:"]), 
+                    html.Td(cfg.spec_datas['metadata']['req_params']['stop_sample']),
+                ]),
+                html.Tr([
+                    html.Th(["Modulus:"]), 
+                    html.Td(cfg.spec_datas['metadata']['req_params']['modulus']),
+                ]),
+                html.Tr([
+                    html.Th(["Integration:"]), 
+                    html.Td(cfg.spec_datas['metadata']['req_params']['integration']),
+                ]),
+                html.Tr([
+                    html.Th(["FFT Bins:"]), 
+                    html.Td(cfg.spec_datas['metadata']['req_params']['bins']),
+                ]),
+                html.Tr([
+                    html.Th(["Points:"]), 
+                    html.Td(cfg.spec_datas['metadata']['req_params']['n_points']),
+                ]),
+            ], style={'overflow': 'scroll', 'width': '100%'}), 
 
-    children = [
-        dbc.Label("General"),
-        html.Table([
-            html.Tr([
-                html.Th("Sample Rate:"), 
-                html.Td(convert_to_hz_units(cfg.spec_datas['metadata']['sfreq'])),
-            ]),
-            html.Tr([
-                html.Th(["Center Frequency:"]), 
-                html.Td(convert_to_hz_units(cfg.spec_datas['metadata']['cfreq'])),
-            ]),
-            html.Tr([
-                html.Th(["Channel:"]), 
-                html.Td([cfg.spec_datas['metadata']['channel']]),
-            ]),
-        ]), 
-        html.Hr(),
-        dbc.Label("Processing"),
-        html.Table([
-            html.Tr([
-                html.Th("Decimation factor:"), 
-                html.Td(cfg.spec_datas['metadata']['metadata_samples']['processing']['decimation']),
-            ]),
-            html.Tr([
-                html.Th(["Interpolation:"]), 
-                html.Td(cfg.spec_datas['metadata']['metadata_samples']['processing']['interpolation']),
-            ]),
-            html.Tr([
-                html.Th(["Scaling:"]), 
-                html.Td(cfg.spec_datas['metadata']['metadata_samples']['processing']['scaling']),
-            ]),
-        ]), 
-        html.Hr(),
-        dbc.Label("Receiver"),
-        html.Table([
-            html.Tr([
-                html.Th(["ID:"]), 
-                html.Td(cfg.spec_datas['metadata']['metadata_samples']['receiver']['id']),
-            ]),
-            html.Tr([
-                html.Th("Antenna:"), 
-                html.Td(cfg.spec_datas['metadata']['metadata_samples']['receiver']['antenna']),
-            ]),
-            html.Tr([
-                html.Th(["Clock rate:"]), 
-                html.Td(convert_to_hz_units(cfg.spec_datas['metadata']['metadata_samples']['receiver']['clock_rate'])),
-            ]),
-            html.Tr([
-                html.Th(["Description:"]), 
-                html.Td(cfg.spec_datas['metadata']['metadata_samples']['receiver']['description']),
-            ]),
-        ]), 
-        html.Hr(),
-        dbc.Label("Request Parameters"),
-        html.Table([
-            html.Tr([
-                html.Th(["File path:"]), 
-                html.Td(cfg.spec_datas['metadata']['req_params']['filepath']),
-            ]),
-            html.Tr([
-                html.Th("Channel:"), 
-                html.Td(cfg.spec_datas['metadata']['req_params']['channel']),
-            ]),
-            html.Tr([
-                html.Th(["Start Sample:"]), 
-                html.Td(cfg.spec_datas['metadata']['req_params']['start_sample']),
-            ]),
-            html.Tr([
-                html.Th(["Stop Sample:"]), 
-                html.Td(cfg.spec_datas['metadata']['req_params']['stop_sample']),
-            ]),
-            html.Tr([
-                html.Th(["Modulus:"]), 
-                html.Td(cfg.spec_datas['metadata']['req_params']['modulus']),
-            ]),
-            html.Tr([
-                html.Th(["Integration:"]), 
-                html.Td(cfg.spec_datas['metadata']['req_params']['integration']),
-            ]),
-            html.Tr([
-                html.Th(["FFT Bins:"]), 
-                html.Td(cfg.spec_datas['metadata']['req_params']['bins']),
-            ]),
-            html.Tr([
-                html.Th(["Points:"]), 
-                html.Td(cfg.spec_datas['metadata']['req_params']['n_points']),
-            ]),
-        ], style={'overflow': 'scroll', 'width': '100%'}), 
-
-        # style={'width': '100%'}),
-    ]
+            # style={'width': '100%'}),
+        ]
+    except KeyError as e:
+        raise dash.exceptions.PreventUpdate 
 
     return children
 
@@ -413,7 +419,7 @@ def get_drf_channel_info(n, drf_path):
 
 
     try:
-        rstrm = cfg.redis_instance.xread({f'responses:{req_id}:channels'.encode(): '0-0'.encode()}, block=1000, count=1) 
+        rstrm = cfg.redis_instance.xread({f'responses:{req_id}:channels'.encode(): '0-0'.encode()}, block=10000, count=1) 
         print(f"received drf channels:\n{rstrm}")
 
     except:
@@ -461,7 +467,7 @@ def get_drf_sample_range(chan, drf_path):
 
     # wait for the response in a stream
     try:
-        rstrm = cfg.redis_instance.xread({f'responses:{req_id}:samples'.encode(): '0-0'.encode()}, block=1000, count=1) 
+        rstrm = cfg.redis_instance.xread({f'responses:{req_id}:samples'.encode(): '0-0'.encode()}, block=10000, count=1) 
         print(f"received drf samples:\n{rstrm}")
 
     except:
@@ -522,7 +528,7 @@ def update_integration_and_modulus(n):
                     'type': 'modulus-input', 'index': 0, 
                 },
                 type="number",
-                value=1,
+                value=10000,
                 min=1,
                 step=1, debounce=True,
             )),
@@ -636,3 +642,6 @@ def toggle_modal(n_open, n_close, n_load, is_open):
     if n_open or n_close or n_load[0]:
         return not is_open
     return is_open
+
+
+

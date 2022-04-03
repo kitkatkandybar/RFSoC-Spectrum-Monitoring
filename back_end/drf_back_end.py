@@ -56,8 +56,8 @@ def drf_requests_handler(msg):
 
         start_sample = int(req_params['start_sample'])
         stop_sample  = int(req_params['stop_sample'])
-        modulus      = 10000
-        integration  = 10
+        modulus      = int(req_params['modulus'])
+        integration  = int(req_params['integration'])
         bins         = int(req_params['bins'])
         filepath     = req_params['drf_path']
         drf_chan     = req_params['channel']

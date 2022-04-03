@@ -30,6 +30,8 @@ import drf_callbacks
 from stream_components import *
 import stream_callbacks
 
+import shared_callbacks
+
 import config as cfg
 
 
@@ -102,6 +104,7 @@ def serve_layout():
         dcc.Store(id='drf-n-samples', data=0),
         dcc.Store(id='placeholder'),
         dcc.Store(id='download-placeholder'),
+        dcc.Download(id="download-board-data"),
 
     ], fluid=True)
 
@@ -130,7 +133,7 @@ def render_tab_content(tab):
 @app.callback(dash.Output('spectrum-graph', 'figure'),
               dash.Input('stream-data', 'data'),
               dash.Input('drf-data', 'data'),
-              dash.Input({'type': 'radio-log-scale', 'index': dash.ALL,}, 'value'),
+              dash.Input({'type': 'spectrum-radio-log-scale', 'index': dash.ALL,}, 'value'),
               dash.Input({'type': 'radio-display-max', 'index': dash.ALL,}, 'value'),
               dash.Input({'type': 'radio-display-min', 'index': dash.ALL,}, 'value'),
 
@@ -207,7 +210,7 @@ def update_spectrum_graph(
 @app.callback(dash.Output('specgram-graph', 'figure'),
               dash.Input('stream-data', 'data'),
               dash.Input('drf-data', 'data'),
-              dash.Input({'type': 'radio-log-scale', 'index': dash.ALL,}, 'value'),
+              dash.Input({'type': 'specgram-radio-log-scale', 'index': dash.ALL,}, 'value'),
               dash.Input({'type': 'specgram-color-dropdown', 'index': dash.ALL,}, 'value'),
               dash.Input({'type': 'stream-metadata-accordion', 'index': dash.ALL,}, 'children'),
               dash.Input('request-id', 'data'),

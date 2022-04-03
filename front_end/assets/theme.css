@@ -7,3 +7,7 @@
 .accordion {
     padding: 5px;
 }
+
+.accordion-body {
+    overflow-x: auto;
+}

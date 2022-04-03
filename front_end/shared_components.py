@@ -3,26 +3,22 @@ from dash import html
 import dash_bootstrap_components as dbc
 
 
-def get_graph_settings(id_num):
-	return    [
-                    dbc.Label("Y axis scale", html_for="radio-log-scale"),
-                    dcc.RadioItems(
-                        options=[
-                            {'label': 'Log Scale', 'value': 'on'},
-                            {'label': 'Linear Scale', 'value': 'off'}
-                        ],
-                        value='on',
-                        id={
-                            'type': 'radio-log-scale', 'index': id_num, 
-                        },
-                        labelStyle={"verticalAlign": "middle", 'padding-right': '10px'},
-                        className="plot-display-radio-items",
-                    ),
-                ]
-
-
 def get_spectrum_graph_settings(id_num):
     return [
+            dbc.Label("Y axis scale", html_for="spectrum-radio-log-scale"),
+            dcc.RadioItems(
+                options=[
+                    {'label': 'Log Scale', 'value': 'on'},
+                    {'label': 'Linear Scale', 'value': 'off'}
+                ],
+                value='on',
+                id={
+                    'type': 'spectrum-radio-log-scale', 'index': id_num, 
+                },
+                labelStyle={"verticalAlign": "middle", 'padding-right': '10px'},
+                className="plot-display-radio-items",
+            ),
+            html.Hr(),
             dbc.Label("Y axis range"),
             dbc.Row([
                 dbc.Label("Min", width="auto"),
@@ -32,7 +28,7 @@ def get_spectrum_graph_settings(id_num):
                             'type': 'spectrum-y-min-input', 'index': id_num, 
                         },
                         type="number",
-                        step=1, debounce=True,
+                        debounce=True,
                     ), 
                 ),]),
             dbc.Row([
@@ -43,7 +39,7 @@ def get_spectrum_graph_settings(id_num):
                             'type': 'spectrum-y-max-input', 'index': id_num, 
                         },
                         type="number",
-                        step=1, debounce=True,
+                        debounce=True,
                     ), 
                 ),
                 
@@ -83,6 +79,20 @@ def get_spectrum_graph_settings(id_num):
 
 def get_specgram_graph_settings(id_num):
     return  [
+        dbc.Label("Y axis scale", html_for="specgram-radio-log-scale"),
+        dcc.RadioItems(
+            options=[
+                {'label': 'Log Scale', 'value': 'on'},
+                {'label': 'Linear Scale', 'value': 'off'}
+            ],
+            value='on',
+            id={
+                'type': 'specgram-radio-log-scale', 'index': id_num, 
+            },
+            labelStyle={"verticalAlign": "middle", 'padding-right': '10px'},
+            className="plot-display-radio-items",
+        ),
+        html.Hr(),
         dbc.Label("Y axis range"),
             dbc.Row([
                 dbc.Label("Min", width="auto"),
@@ -92,7 +102,7 @@ def get_specgram_graph_settings(id_num):
                             'type': 'specgram-y-min-input', 'index': id_num, 
                         },
                         type="number",
-                        step=1, debounce=True,
+                        debounce=True,
                     ), 
                 ),]),
             dbc.Row([
@@ -103,7 +113,7 @@ def get_specgram_graph_settings(id_num):
                             'type': 'specgram-y-max-input', 'index': id_num, 
                         },
                         type="number",
-                        step=1, debounce=True,
+                        debounce=True,
                     ), 
                 ),
                 
