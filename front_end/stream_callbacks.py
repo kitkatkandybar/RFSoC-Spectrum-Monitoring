@@ -297,19 +297,20 @@ def handle_download_request(n, board, duration, time_unit, name):
 
     # get entire stream
     rstrm_real = cfg.redis_instance.xrange(f'{res_prefix}:real') 
+
     rstrm_imag = cfg.redis_instance.xrange(f'{res_prefix}:imag')
 
     n_points = len(rstrm_real)
     print(f"n points: {n_points}")
 
-    datadir = os.path.join("/Users/yanag/Documents", "drf_ex")
+    datadir = os.path.join("/Users/jaimemohedano/Desktop/DIGITALRF", "drf_ex")
     chdir = os.path.join(datadir, "channel")
 
     # writing parameters
-    sample_rate_numerator = int(25000000)  # 100 Hz sample rate - typically MUCH faster
+    sample_rate_numerator = int(metadata['sfreq'])  # 100 Hz sample rate - typically MUCH faster
     sample_rate_denominator = 1
     sample_rate = np.longdouble(sample_rate_numerator) / sample_rate_denominator
-    dtype_str = "i2"  # short int
+    dtype_str = "f8"  # short int
     sub_cadence_secs = (
         3600  # Number of seconds of data in a subdirectory - typically MUCH larger
     )
@@ -322,15 +323,12 @@ def handle_download_request(n, board, duration, time_unit, name):
     marching_periods = False  # no marching periods when writing
     uuid             = "Fake UUID - use a better one!"
     vector_length    = metadata['number_samples'] #25000000  # number of samples written for each call - typically MUCH longer
-
+    
     # create short data in r/i to test using that to write
     arr_data = np.ones(
         # (vector_length, num_subchannels), dtype=[("r", np.int16), ("i", np.int16)]
-        (vector_length, ), dtype=[("r", np.int16), ("i", np.int16)]
+        (vector_length*n_points,), dtype=[("r", np.float), ("i", np.float)]
     )
-
-
-   
 
 
     # start 2014-03-09 12:30:30 plus one sample
@@ -358,11 +356,14 @@ def handle_download_request(n, board, duration, time_unit, name):
         is_continuous,
         marching_periods,
     )
+
     # write
     for i in range(n_points):
-        arr_data["r"] = np.array(orjson.loads(rstrm_real[i][1][b'data']))
-        arr_data["i"] = np.array(orjson.loads(rstrm_imag[i][1][b'data']))
-        result = dwo.rf_write(arr_data)
+        arr_data["r"][i*vector_length:i*vector_length+vector_length] = orjson.loads(rstrm_real[i][1][b'data'])
+        arr_data["i"][i*vector_length:i*vector_length+vector_length] = orjson.loads(rstrm_imag[i][1][b'data'])
+    result = dwo.rf_write(arr_data)
+
+    
 
     # close
     dwo.close()
@@ -393,7 +394,7 @@ def handle_download_request(n, board, duration, time_unit, name):
     # as the samples index
     idx_arr = np.arange(10, dtype=np.int64) + start_global_index
 
-    data_dict["center_frequencies"] = [15000000.]
+    data_dict["center_frequencies"] = [metadata['cfreq'] ]
 
 
     sub_dict_processing = {}
@@ -408,7 +409,7 @@ def handle_download_request(n, board, duration, time_unit, name):
     sub_dict_receiver = {}
     sub_dict_receiver["antenna"] = 'ADC0' #
     sub_dict_receiver["bandwidth"] = 100000000.0
-    sub_dict_receiver["center_freq"] = 15000000.0
+    sub_dict_receiver["center_freq"] = metadata['cfreq']
     sub_dict_receiver["clock_rate"] = 125000000.0
     sub_dict_receiver["clock_source"] = 'external'
     sub_dict_receiver["dc_offset"] = False
@@ -436,7 +437,7 @@ def handle_download_request(n, board, duration, time_unit, name):
     data_dict["receiver"] = sub_dict_receiver
 
     data_dict["sample_rate_denominator"] = 1
-    data_dict["sample_rate_numerator"] = 25000000
+    data_dict["sample_rate_numerator"] = metadata['sfreq']
     data_dict["uuid_str"] = 'a8012bf59eeb49d6a71fbfdcddf1efbb' #randomly chosen
 
     dmw.write(idx_arr, data_dict)
