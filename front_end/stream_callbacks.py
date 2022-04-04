@@ -413,7 +413,7 @@ def handle_download_request(n, board, duration, time_unit, name):
     sub_dict_receiver["clock_rate"] = 125000000.0
     sub_dict_receiver["clock_source"] = 'external'
     sub_dict_receiver["dc_offset"] = False
-    sub_dict_receiver["description"] = 'UHD USRP source using GNU Radio'
+    sub_dict_receiver["description"] = 'BU RFSoC'
     sub_dict_receiver["gain"] = 50.0
     sub_dict_receiver["id"] = '192.168.20.2'
     sub_dict_receiver_info= {}
