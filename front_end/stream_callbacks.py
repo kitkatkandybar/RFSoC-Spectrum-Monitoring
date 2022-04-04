@@ -394,12 +394,12 @@ def handle_download_request(n, board, duration, time_unit, name):
     # as the samples index
     idx_arr = np.arange(10, dtype=np.int64) + start_global_index
 
-    data_dict["center_frequencies"] = [metadata['cfreq'] ]
+    data_dict["center_frequencies"] = [metadata['sfreq'] /4 ] #  [metadata['cfreq'] ]
 
 
     sub_dict_processing = {}
     sub_dict_processing["channelizer_filter_taps"] = []#array([], dtype=float64)
-    sub_dict_processing["decimation"] = 1
+    sub_dict_processing["decimation"] = 2
     sub_dict_processing["interpolation"] = 1
     sub_dict_processing["resampling_filter_taps"] = [] #array([], dtype=float64)
     sub_dict_processing["scaling"] = 1.0
@@ -409,7 +409,7 @@ def handle_download_request(n, board, duration, time_unit, name):
     sub_dict_receiver = {}
     sub_dict_receiver["antenna"] = 'ADC0' #
     sub_dict_receiver["bandwidth"] = 100000000.0
-    sub_dict_receiver["center_freq"] = metadata['cfreq']
+    sub_dict_receiver["center_freq"] = metadata['sfreq'] /4 #metadata['cfreq']
     sub_dict_receiver["clock_rate"] = 125000000.0
     sub_dict_receiver["clock_source"] = 'external'
     sub_dict_receiver["dc_offset"] = False
@@ -455,33 +455,5 @@ def handle_download_request(n, board, duration, time_unit, name):
 
 
     return 0
-
-
-# @dash.callback(
-#     dash.Output({'type': 'download-name-input', 'index': 0}, 'disabled'),
-#     dash.Input('input-dir-button', 'n_clicks'),
-# )
-# def redis_update_download_data_button(n):
-#     """
-#     Let the user load the DRF data once they have chosen an input directory
-#     """
-#     if n < 1: return True
-
-#     return False
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 

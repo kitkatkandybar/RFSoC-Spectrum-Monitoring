@@ -115,7 +115,7 @@ app.layout = serve_layout()
               dash.Input("content-tabs", 'value'))
 def render_tab_content(tab):
     cfg.sa.spectrogram.clear_data()
-    cfg.sa.spec.data        = []
+    cfg.sa.spec.data        = np.array([])
     if cfg.spec_datas:
         cfg.spec_datas = {}
 

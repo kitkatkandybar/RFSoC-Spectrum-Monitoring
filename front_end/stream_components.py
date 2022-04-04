@@ -60,7 +60,7 @@ download_modal = html.Div(
                         #     color="secondary",
                         # ),
                         html.Hr(),
-                        dbc.Label("Name"),
+                        dbc.Label("Name of file"),
                         dbc.Row([
                             dcc.Input(
                                 id={
