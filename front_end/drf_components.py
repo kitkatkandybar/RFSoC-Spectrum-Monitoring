@@ -72,6 +72,9 @@ drf_form_modal = html.Div(
     ]
 )
 
+
+
+
 # create radio option components
 drf_sidebar_radio = html.Div([
 

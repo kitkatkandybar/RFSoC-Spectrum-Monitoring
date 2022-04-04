@@ -55,10 +55,10 @@ download_modal = html.Div(
                                 searchable=False
                             ), 
                         ),
-                        dbc.FormText(
-                            "Values are offsets from current time",
-                            color="secondary",
-                        ),
+                        # dbc.FormText(
+                        #     "Values are offsets from current time",
+                        #     color="secondary",
+                        # ),
                         html.Hr(),
                         dbc.Label("Name"),
                         dbc.Row([
@@ -67,6 +67,7 @@ download_modal = html.Div(
                                     'type': 'download-name-input', 'index': 0, 
                                 },
                                 debounce=True,
+                                value="my_drf_file"
                             ), 
                         ]),
 

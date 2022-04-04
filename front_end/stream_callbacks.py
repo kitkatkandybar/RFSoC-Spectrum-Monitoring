@@ -75,7 +75,7 @@ def update_stream_metadata(stream_names):
     # cfg.sa.spectrogram.centre_frequency = sfreq/2
     cfg.sa.spectrogram.centre_frequency = sfreq/4
     # cfg.sa.spectrogram.centre_frequency        = sfreq/4
-    
+
     cfg.sa.spec.number_samples          = n_samples
     cfg.sa.spectrogram.number_samples   = n_samples
     # TODO: Set the decimation factor some other way?
@@ -224,7 +224,7 @@ def get_active_download_boards(n, tab):
 
 
 @dash.callback(
-    dash.Output('download-placeholder', 'data'),
+    dash.Output('download-board-data', 'data'),
     dash.Input({'type': 'download-button', 'index': dash.ALL,}, 'n_clicks'),
     dash.State({'type': 'download-board-picker', 'index': dash.ALL,}, 'value'),
     dash.State({'type': 'duration-download-input', 'index': dash.ALL,}, 'value'),
@@ -303,8 +303,8 @@ def handle_download_request(n, board, duration, time_unit, name):
     n_points = len(rstrm_real)
     print(f"n points: {n_points}")
 
-    datadir = os.path.join("/Users/jaimemohedano/Desktop/DIGITALRF", "drf_ex")
-    chdir = os.path.join(datadir, "channel")
+    datadir = os.path.join("C:/Users/yanag/Documents/drf_ex", "drf_ex")
+    chdir = os.path.join(datadir, "channel0")
 
     # writing parameters
     sample_rate_numerator = int(metadata['sfreq'])  # 100 Hz sample rate - typically MUCH faster
@@ -449,6 +449,9 @@ def handle_download_request(n, board, duration, time_unit, name):
     cfg.redis_instance.delete(f'{res_prefix}:metadata')
 
 
+    zip_file_name = name[0]
+    zip_path = shutil.make_archive(zip_file_name, 'zip', datadir)
+    return dcc.send_file(zip_path)
 
 
     return 0

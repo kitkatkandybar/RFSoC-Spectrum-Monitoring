@@ -1,5 +1,5 @@
 redis:
-  host: '155.41.32.204'
+  host: 'localhost'
   port: 6379
 dash:
   host: '127.0.0.1'

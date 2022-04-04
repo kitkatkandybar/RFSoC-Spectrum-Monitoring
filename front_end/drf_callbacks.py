@@ -392,7 +392,7 @@ def update_metadeta_output(req_id, tab):
                     html.Th(["Points:"]), 
                     html.Td(cfg.spec_datas['metadata']['req_params']['n_points']),
                 ]),
-            ], style={'overflow': 'scroll', 'width': '100%'}), 
+            ], style={'width': '100%'}), 
 
             # style={'width': '100%'}),
         ]
