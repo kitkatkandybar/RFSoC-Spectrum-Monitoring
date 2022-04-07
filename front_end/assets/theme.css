@@ -3,3 +3,11 @@
     width: 40%;
     padding: 10px;
 }
+
+.accordion {
+    padding: 5px;
+}
+
+.accordion-body {
+    overflow-x: auto;
+}

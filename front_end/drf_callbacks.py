@@ -1,11 +1,14 @@
+import zipfile
+
 import dash
 from dash import dcc
 from dash import html
 import dash_bootstrap_components as dbc
 
 import time
-
+import digital_rf
 import orjson
+
 
 import config as cfg
 
@@ -14,7 +17,7 @@ import config as cfg
     dash.Output(component_id='sample-div', component_property='children'),
     dash.Input('input-dir-button', 'n_clicks'),
 )
-def update_sample_slider(n):
+def update_sample_input(n):
     """
     Displays the sample slider once the user has selected a DigitalRF directory
     """
@@ -23,32 +26,46 @@ def update_sample_slider(n):
 
     if n < 1: return None
 
-    sample_min  = 0
-    sample_max  = 1000001
-    sample_step = 10000
-
-    sample_start_default = 300000
-    sample_stop_default  = 700000
-    sample_mark_width    = 200000
-
     children = [
         html.Hr(),
-        dbc.Label("Sample Range", html_for="range-slider"),
-        dcc.RangeSlider(
-            id={
-                'type': 'range-slider', 'index': 0, 
-            },
-            min=sample_min,
-            max=sample_max,
-            step=sample_step,
-            value=[sample_start_default, sample_stop_default],
-            marks={i: '{}k'.format(int(i/1000)) for i in range(sample_min, sample_max, sample_mark_width)},
-
-        ),
-      
-
+        dbc.Label("Sample Range"),
+        dbc.Row([
+            dbc.Label("Start", width="auto"),
+            dbc.Col(
+                dcc.Input(
+                    id={
+                        'type': 'start-sample-input', 'index': 0, 
+                    },
+                    type="number",
+                    value=0,
+                    min=0,
+                    max=0,
+                    step=1, debounce=True,
+                ), 
+            ),
+            dbc.Label("Stop", width="auto"),
+            dbc.Col(
+                dcc.Input(
+                    id={
+                        'type': 'stop-sample-input', 'index': 0, 
+                    },
+                    type="number",
+                    value=0,
+                    min=0,
+                    max=0,
+                    step=1, debounce=True,
+                ), 
+            ),
+            dbc.FormText(
+                "Acceptable range: {} - {}",
+                color="secondary",
+                id="sample-range-formtext"
+            ),
+        ]),
 
     ]
+
+
     return children
 
 
@@ -77,7 +94,7 @@ def update_bins_slider(n):
 
     children = [
         html.Hr(),
-        dbc.Label("Number of Bins", html_for="bins-slider"),
+        dbc.Label("Number of FFT Bins", html_for="bins-slider"),
         dcc.Slider(
             id={
                 'type': 'bins-slider', 'index': 0, 
@@ -102,12 +119,15 @@ def update_bins_slider(n):
     dash.Output('drf-err', 'children'),
     dash.Output('request-id', 'data'),
     dash.Input({'type': 'drf-load', 'index': dash.ALL}, 'n_clicks'),
-    dash.State('drf-path', 'value'),
+    dash.State({'type': 'drf-path', 'index': dash.ALL,}, 'value'),
     dash.State({'type': 'channel-picker', 'index': dash.ALL,}, 'value'),
-    dash.State({'type': 'range-slider', 'index': dash.ALL,}, 'value'),
+    dash.State({'type': 'start-sample-input', 'index': dash.ALL,}, 'value'),
+    dash.State({'type': 'stop-sample-input', 'index': dash.ALL,}, 'value'),
     dash.State({'type': 'bins-slider', 'index': dash.ALL,}, 'value'),
+    dash.State({'type': 'modulus-input', 'index': dash.ALL,}, 'value'),
+    dash.State({'type': 'integration-input', 'index': dash.ALL,}, 'value'),
 )
-def send_redis_request_and_get_metadata(n_clicks, drf_path, channel, sample_range, bins):
+def send_redis_request_and_get_metadata(n_clicks, drf_path, channel, start, stop, bins, modulus, integration):
     """
     Sends a request to the back end for DigitalRF data, and receives the metadata from the request
     """
@@ -120,18 +140,20 @@ def send_redis_request_and_get_metadata(n_clicks, drf_path, channel, sample_rang
     n_bins = 2**bins[0]
 
     req = {
-        'drf_path'     : drf_path,
+        'drf_path'     : drf_path[0],
         'channel'      : channel[0],
-        'start_sample' : sample_range[0][0],
-        'stop_sample'  : sample_range[0][1],
-        'bins'         : n_bins
+        'start_sample' : start[0],
+        'stop_sample'  : stop[0],
+        'bins'         : n_bins,
+        'modulus'      : modulus[0],
+        'integration'  : integration[0],
     }
 
     cfg.redis_instance.publish(f'requests:{req_id}:data', orjson.dumps(req))
 
 
     try:
-        rstrm = cfg.redis_instance.xread({f'responses:{req_id}:metadata'.encode(): '0-0'.encode()}, block=1000, count=1) 
+        rstrm = cfg.redis_instance.xread({f'responses:{req_id}:metadata'.encode(): '0-0'.encode()}, block=10000, count=1) 
         print(f"received drf metadata:\n{rstrm}")
 
     except:
@@ -153,6 +175,11 @@ def send_redis_request_and_get_metadata(n_clicks, drf_path, channel, sample_rang
 
     sfreq     = metadata['sfreq']
     n_samples = metadata['n_samples']
+
+    decimation = metadata['metadata_samples']['processing']['decimation']
+    cfg.sa.spectrogram.decimation_factor = decimation
+    cfg.sa.spec.decimation_factor        = decimation
+
 
     # set axes and other basic info for plots
     cfg.sa.spec.yrange      = (y_min, y_max)
@@ -239,6 +266,22 @@ def handle_drf_interval(tab, drf_finished, pause, play, n):
     print("Disabling drf interval")
     return True
 
+
+def convert_to_hz_units(val):
+    if val > 1e9:
+        s = f"{val / 1e9} GHz"
+    elif val > 1e6:
+        s = f"{val / 1e6} MHz"
+    elif val > 1e3:
+        s = f"{val / 1e3} kHz"
+    else:
+        s = f"{val } Hz"
+
+    return s
+
+
+
+
 @dash.callback(
     dash.Output({'type': 'drf-metadata-accordion', 'index': 0,}, 'children'),
     dash.Input('request-id', 'data'),
@@ -259,11 +302,102 @@ def update_metadeta_output(req_id, tab):
     if prop_id == "content-tabs":
         return None
 
-    children = [
-        html.P(f"Sample Rate: {cfg.spec_datas['metadata']['sfreq']} samples/second"),
-        html.P(f"Center Frequency: {cfg.spec_datas['metadata']['cfreq']} Hz"),
-        html.P(f"Channel: {cfg.spec_datas['metadata']['channel']}"),
-    ]
+
+    # TODO: Check to make sure all of these keys exist before dereferencing them
+    try:
+        children = [
+            dbc.Label("General"),
+            html.Table([
+                html.Tr([
+                    html.Th("Sample Rate:"), 
+                    html.Td(convert_to_hz_units(cfg.spec_datas['metadata']['sfreq'])),
+                ]),
+                html.Tr([
+                    html.Th(["Center Frequency:"]), 
+                    html.Td(convert_to_hz_units(cfg.spec_datas['metadata']['cfreq'])),
+                ]),
+                html.Tr([
+                    html.Th(["Channel:"]), 
+                    html.Td([cfg.spec_datas['metadata']['channel']]),
+                ]),
+            ]), 
+            html.Hr(),
+            dbc.Label("Processing"),
+            html.Table([
+                html.Tr([
+                    html.Th("Decimation factor:"), 
+                    html.Td(cfg.spec_datas['metadata']['metadata_samples']['processing']['decimation']),
+                ]),
+                html.Tr([
+                    html.Th(["Interpolation:"]), 
+                    html.Td(cfg.spec_datas['metadata']['metadata_samples']['processing']['interpolation']),
+                ]),
+                html.Tr([
+                    html.Th(["Scaling:"]), 
+                    html.Td(cfg.spec_datas['metadata']['metadata_samples']['processing']['scaling']),
+                ]),
+            ]), 
+            html.Hr(),
+            dbc.Label("Receiver"),
+            html.Table([
+                html.Tr([
+                    html.Th(["ID:"]), 
+                    html.Td(cfg.spec_datas['metadata']['metadata_samples']['receiver']['id']),
+                ]),
+                html.Tr([
+                    html.Th("Antenna:"), 
+                    html.Td(cfg.spec_datas['metadata']['metadata_samples']['receiver']['antenna']),
+                ]),
+                html.Tr([
+                    html.Th(["Clock rate:"]), 
+                    html.Td(convert_to_hz_units(cfg.spec_datas['metadata']['metadata_samples']['receiver']['clock_rate'])),
+                ]),
+                html.Tr([
+                    html.Th(["Description:"]), 
+                    html.Td(cfg.spec_datas['metadata']['metadata_samples']['receiver']['description']),
+                ]),
+            ]), 
+            html.Hr(),
+            dbc.Label("Request Parameters"),
+            html.Table([
+                html.Tr([
+                    html.Th(["File path:"]), 
+                    html.Td(cfg.spec_datas['metadata']['req_params']['filepath']),
+                ]),
+                html.Tr([
+                    html.Th("Channel:"), 
+                    html.Td(cfg.spec_datas['metadata']['req_params']['channel']),
+                ]),
+                html.Tr([
+                    html.Th(["Start Sample:"]), 
+                    html.Td(cfg.spec_datas['metadata']['req_params']['start_sample']),
+                ]),
+                html.Tr([
+                    html.Th(["Stop Sample:"]), 
+                    html.Td(cfg.spec_datas['metadata']['req_params']['stop_sample']),
+                ]),
+                html.Tr([
+                    html.Th(["Modulus:"]), 
+                    html.Td(cfg.spec_datas['metadata']['req_params']['modulus']),
+                ]),
+                html.Tr([
+                    html.Th(["Integration:"]), 
+                    html.Td(cfg.spec_datas['metadata']['req_params']['integration']),
+                ]),
+                html.Tr([
+                    html.Th(["FFT Bins:"]), 
+                    html.Td(cfg.spec_datas['metadata']['req_params']['bins']),
+                ]),
+                html.Tr([
+                    html.Th(["Points:"]), 
+                    html.Td(cfg.spec_datas['metadata']['req_params']['n_points']),
+                ]),
+            ], style={'width': '100%'}), 
+
+            # style={'width': '100%'}),
+        ]
+    except KeyError as e:
+        raise dash.exceptions.PreventUpdate 
 
     return children
 
@@ -271,25 +405,21 @@ def update_metadeta_output(req_id, tab):
 @dash.callback(
     dash.Output(component_id='channel-div', component_property='children'),
     dash.Input('input-dir-button', 'n_clicks'),
-    dash.State('drf-path', 'value'),
+    dash.State({'type': 'drf-path', 'index': dash.ALL,}, 'value'),
 )
 def get_drf_channel_info(n, drf_path):
     """
     Get DRF Channel information when the user has supplied an input directory 
     """
-    print("clicked input dir button")
     if n < 1: return dash.no_update
-    print("clicked redis button")
     req_id = cfg.redis_instance.incr('request-id')
-    print(f'REQ ID: {req_id}')
-    
-    print(f"publishing request {req_id} for {drf_path}")
+    print(f"publishing request {req_id} for {drf_path[0]}")
     # make a request for the channels from drf_path
-    cfg.redis_instance.publish(f'requests:{req_id}:channels', drf_path)
+    cfg.redis_instance.publish(f'requests:{req_id}:channels', drf_path[0])
 
 
     try:
-        rstrm = cfg.redis_instance.xread({f'responses:{req_id}:channels'.encode(): '0-0'.encode()}, block=1000, count=1) 
+        rstrm = cfg.redis_instance.xread({f'responses:{req_id}:channels'.encode(): '0-0'.encode()}, block=10000, count=1) 
         print(f"received drf channels:\n{rstrm}")
 
     except:
@@ -318,6 +448,110 @@ def get_drf_channel_info(n, drf_path):
      ]
 
     return children
+
+@dash.callback(
+    dash.Output('drf-n-samples', 'data'),
+    dash.Input({'type': 'channel-picker', 'index': dash.ALL,}, 'value'),
+    dash.State({'type': 'drf-path', 'index': dash.ALL,}, 'value'),
+
+    prevent_initial_call=True
+)
+def get_drf_sample_range(chan, drf_path):
+    if not chan or not drf_path:
+        return dash.no_update
+    # send a request for samples
+    req_id = cfg.redis_instance.incr('request-id')
+    cfg.redis_instance.publish(f'requests:{req_id}:samples', orjson.dumps({'path': drf_path[0], 'channel': chan[0]}))
+    print(f"publishing request {req_id} for {drf_path[0]} and chan {chan[0]}")
+
+
+    # wait for the response in a stream
+    try:
+        rstrm = cfg.redis_instance.xread({f'responses:{req_id}:samples'.encode(): '0-0'.encode()}, block=10000, count=1) 
+        print(f"received drf samples:\n{rstrm}")
+
+    except:
+        return dash.no_update
+
+    cfg.redis_instance.delete(f'responses:{req_id}:samples')
+    
+    n_samples = orjson.loads(rstrm[0][1][0][1][b'data'])
+
+    return n_samples
+
+@dash.callback(
+    dash.Output('sample-range-formtext', 'children'),
+    dash.Input('drf-n-samples', 'data'),
+)
+def update_sample_formtext(n):
+    s = f"Acceptable range: 0 - {n}"
+    return s
+
+@dash.callback(
+    dash.Output({'type': 'start-sample-input', 'index': 0,}, 'max'),
+    dash.Input('drf-n-samples', 'data'),
+)
+def update_sample_min_range(n):
+    return n
+
+
+@dash.callback(
+    dash.Output({'type': 'stop-sample-input', 'index': 0,}, 'max'),
+    dash.Input('drf-n-samples', 'data'),
+)
+def update_sample_max_range(n):
+    return n
+
+
+@dash.callback(
+    dash.Output({'type': 'stop-sample-input', 'index': 0,}, 'value'),
+    dash.Input('drf-n-samples', 'data'),
+)
+def update_sample_max_val(n):
+    return n
+
+@dash.callback(
+    dash.Output(component_id='int-mod-div', component_property='children'),
+    dash.Input('input-dir-button', 'n_clicks'),
+)
+def update_integration_and_modulus(n):
+    if n < 1: return None
+
+    children = [
+        html.Hr(),
+        dbc.Row([
+            dbc.Label("Modulus", width="auto"),
+            dbc.Col(
+
+            dcc.Input(
+                id={
+                    'type': 'modulus-input', 'index': 0, 
+                },
+                type="number",
+                value=10000,
+                min=1,
+                step=1, debounce=True,
+            )),
+            dbc.Label("Integration", width="auto"),
+            dbc.Col(
+
+            dcc.Input(
+                id={
+                    'type': 'integration-input', 'index': 0, 
+                },
+                type="number",
+                value=1,
+                min=1,
+                step=1, debounce=True,
+            )), 
+        ]),
+           
+    ]
+
+    return children
+
+
+
 
 
 
@@ -408,3 +642,6 @@ def toggle_modal(n_open, n_close, n_load, is_open):
     if n_open or n_close or n_load[0]:
         return not is_open
     return is_open
+
+
+

@@ -6,16 +6,27 @@ import os.path
 import yaml
 import redis
 import numpy as np
+import orjson
 import json
 import time
 import argparse
-
+import traceback
 
 from digital_rf_utils import *
 
 r = None
 p = None
 
+
+class NumpyEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.longdouble):
+            return float(obj)
+        if isinstance(obj, np.int64):
+            return int(obj)
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return json.JSONEncoder.default(self, obj)
 
 def drf_requests_handler(msg):
     print(f'got message: {msg}')
@@ -28,19 +39,38 @@ def drf_requests_handler(msg):
         drf_path = msg['data'].decode()
         drf_channels = get_drf_channels(drf_path)
 
-        print(f'sending: responses:{req_id}:channels, {json.dumps(drf_channels)}')
-        r.xadd(f'responses:{req_id}:channels', {'data': json.dumps(drf_channels)}) 
+        print(f'sending: responses:{req_id}:channels, {orjson.dumps(drf_channels)}')
+        r.xadd(f'responses:{req_id}:channels', {'data': orjson.dumps(drf_channels)})
+    if 'samples' in channel:
+        # user is requesting the number of samples in a drf channel
+        d = orjson.loads(msg['data'])
+        path = d['path']
+        chan = d['channel']
+        n_samples = get_n_samples(path, chan)
+        r.xadd(f'responses:{req_id}:samples', {'data': orjson.dumps(n_samples)})
+
 
     elif 'data' in channel:
-        req_params = json.loads(msg['data'])
+        req_params = orjson.loads(msg['data'])
         print(f'got request for data: {req_params} ')
+
+        start_sample = int(req_params['start_sample'])
+        stop_sample  = int(req_params['stop_sample'])
+        modulus      = int(req_params['modulus'])
+        integration  = int(req_params['integration'])
+        bins         = int(req_params['bins'])
+        filepath     = req_params['drf_path']
+        drf_chan     = req_params['channel']
+
+
+
 
         r.delete(f'responses:{req_id}:stream')
         try:
-            spec_datas = read_digital_rf_data([req_params['drf_path']], plot_file=None, plot_type="spectrum", channel=req_params['channel'],
+            spec_datas = read_digital_rf_data([filepath], plot_file=None, plot_type="spectrum", channel=drf_chan,
                 subchan=0, sfreq=0.0, cfreq=None, atime=0,
-                start_sample=int(req_params['start_sample']), stop_sample=int(req_params['stop_sample']), modulus=10000, integration=1, 
-                zscale=(0, 0), bins=int(req_params['bins']), log_scale=False, detrend=False,msl_code_length=0,
+                start_sample=start_sample, stop_sample=stop_sample, modulus=modulus, integration=integration, 
+                zscale=(0, 0), bins=bins, log_scale=False, detrend=False,msl_code_length=0,
                 msl_baud_length=0)
 
 
@@ -49,23 +79,38 @@ def drf_requests_handler(msg):
 
             n_data_points = len(spec_datas['data'])
 
-            spec_datas['metadata']['y_max']          = y_max
-            spec_datas['metadata']['y_min']          = y_min
+            req_params = {
+                'filepath':     filepath,
+                'channel':      drf_chan,
+                'start_sample': start_sample,
+                'stop_sample':  stop_sample,
+                'modulus':      modulus,
+                'integration':  integration,
+                'bins':         bins,
+                'n_points':     n_data_points,
+            }
+
+
+            spec_datas['metadata']['y_max']          = float(y_max)
+            spec_datas['metadata']['y_min']          = float(y_min)
             spec_datas['metadata']['n_samples']      = spec_datas['data'][0]['data'].shape[0]
             spec_datas['metadata']['n_data_points']  = n_data_points
+            spec_datas['metadata']['req_params']     = req_params
+
+            print(spec_datas['metadata'])
 
 
-            r.xadd(f'responses:{req_id}:metadata', {'data': json.dumps(spec_datas['metadata'])}) 
+            r.xadd(f'responses:{req_id}:metadata', {'data': json.dumps(spec_datas['metadata'], cls=NumpyEncoder)}) 
 
 
             print(f"going to send {n_data_points} data points")
             for i in range(n_data_points):
                 d = spec_datas['data'][i]['data']
-                r.xadd(f'responses:{req_id}:stream', {'data': json.dumps(d.tolist())}, maxlen=1000)
+                r.xadd(f'responses:{req_id}:stream', {'data': orjson.dumps(d.tolist())}, maxlen=1000)
                 if (i % 100 == 0):
                     print(f"Wrote to Redis: {i}")
             # send ending message
-            r.xadd(f'responses:{req_id}:stream', {'data': json.dumps({'status': 'DONE'})}, maxlen=1000)
+            r.xadd(f'responses:{req_id}:stream', {'data': orjson.dumps({'status': 'DONE'})}, maxlen=1000)
             print(f'Sent last message for responses:{req_id}:stream')
             
 
@@ -74,6 +119,7 @@ def drf_requests_handler(msg):
 
         except Exception as e:
             # output error message
+            traceback.print_exc()
             print(e)
 
 
