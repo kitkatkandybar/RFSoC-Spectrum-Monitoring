@@ -55,10 +55,6 @@ download_modal = html.Div(
                                 searchable=False
                             ), 
                         ),
-                        # dbc.FormText(
-                        #     "Values are offsets from current time",
-                        #     color="secondary",
-                        # ),
                         html.Hr(),
                         dbc.Label("Name of file"),
                         dbc.Row([
@@ -72,9 +68,6 @@ download_modal = html.Div(
                         ]),
 
                     ]),
-
-
-
                 ]),
                 dbc.ModalFooter([
                     dbc.Button(
@@ -156,7 +149,6 @@ stream_sidebar_components = html.Div(
             
         ],
         id="stream-accordion",
-        # flush=True,
         start_collapsed=False,
     )
 )

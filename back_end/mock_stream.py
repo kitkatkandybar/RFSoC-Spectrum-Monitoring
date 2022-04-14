@@ -28,7 +28,6 @@ def run_mock_live_stream(stream_name, file_path):
                 zscale=(0, 0), bins=1024, log_scale=False, detrend=False,msl_code_length=0,
                 msl_baud_length=0)
 
-    # stream_name = "mock_stream1"
 
     y_max = max([max(d['data']) for d in spec_datas['data']])
     y_min = min([min(d['data']) for d in spec_datas['data']])

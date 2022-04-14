@@ -90,12 +90,12 @@ This file contains functions for reading DigitalRF data and converting it to fre
 
 #### ./back_end/drf_back_end.py
 
-This file contains the main entry point for running the back end to the Digital RF playback portion of the application. It contains code which waits for requests from the front end via the Redis server, and responds to them accordingly. 
+This file contains the main entry point for running the back end to the Digital RF playback portion of the application. It contains code which waits for requests from the front end via the Redis server, and responds to them accordingly. It uses ./back_end/digital_rf_utils.py to convert the raw Digital RF data into spectrum data. 
 
 
 #### ./back_end/mock_stream.py
 
-This file contains code which simulates a live stream coming from a board. It simulates a live stream by reading in data coming from a stored Digital RF file, converts it to the frequency spectrum, and outputs it into a Redis stream in a loop.
+This file contains code which simulates a live stream coming from a board. It simulates a live stream by reading in data coming from a stored Digital RF file, converts it to the frequency spectrum using ./back_end/digital_rf_utils.py, and outputs it into a Redis stream in a loop.
 
 
 ### ./front_end/
@@ -104,11 +104,11 @@ This folder contains all of the code for the Dash-based Web application part of 
 
 #### ./front_end/app.py
 
-This is the main program which runs the Dash application. 
+This is the main program which runs the Dash application. This file contains code which handles initializing the Dash application, as well as some Dash components and callbacks necessary to the overall layout and function of the application, including the main graphs.
 
 #### ./front_end/config.py
 
-This file contains global variables which are used across the various front end files
+This file contains global variables which are used across the various front end files. It is a Python convention to name this kind of file "config.py". 
 
 #### ./front_end/config.yaml
 

@@ -5,6 +5,8 @@ import dash_bootstrap_components as dbc
 import orjson
 import time
 import shutil
+import logging
+logger = logging.getLogger(__name__)
 
 import digital_rf
 
@@ -16,36 +18,36 @@ import config as cfg
 
 
 @dash.callback(
-            dash.Output({'type': 'stream-picker', 'index': dash.ALL,}, 'options'),
-            dash.Input('stream-picker-div', 'n_clicks'),
-            dash.State("content-tabs", 'value'))
+    dash.Output({'type': 'stream-picker', 'index': dash.ALL,}, 'options'),
+    dash.Input('stream-picker-div', 'n_clicks'),
+    dash.State("content-tabs", 'value'),
+)
 def get_active_streams(n, tab):
     """
     get the currently active streams from Redis when the streams tab is clicked
     """
-    print(f'getting active streams? {n}')
+    logging.debug("Getting current active streams")
     if n and tab == 'content-tab-2':
         streams = cfg.redis_instance.smembers("active_streams")
-        print(f"GOT STREAMS: {streams}")
+        logging.debug("Got current active streams: %s", streams)
         picker_options = [
             {'label': s.decode(), 'value': s.decode()} for s in streams
         ]
 
         return [picker_options]
 
-
     raise dash.exceptions.PreventUpdate
 
 
 @dash.callback(
-            dash.Output({'type': 'stream-metadata-accordion', 'index': 0,}, 'children'),
-            dash.Input({'type': 'stream-picker', 'index': dash.ALL,}, 'value'))
+    dash.Output({'type': 'stream-metadata-accordion', 'index': 0,}, 'children'),
+    dash.Input({'type': 'stream-picker', 'index': dash.ALL,}, 'value'),
+)
 def update_stream_metadata(stream_names):
     if not stream_names[0]:
         return html.P("Metadata will appear here when you pick a stream"),
-        # raise dash.exceptions.PreventUpdate
 
-    print(f"Getting metadata for {stream_names[0]}")
+    logger.debug(f"Getting metadata for {stream_names[0]}")
     metadata = cfg.redis_instance.hgetall(f"metadata:{stream_names[0]}")
 
 
@@ -59,32 +61,22 @@ def update_stream_metadata(stream_names):
     cfg.spec_datas = {}
     cfg.spec_datas['metadata'] = metadata
 
-    print(f"got streaming metadata:\n{metadata}")
+    logger.debug("Got stream metadata:\n%s", metadata)
 
     sfreq     = float(metadata['sfreq'])
     n_samples = int(metadata['n_samples'])
-
-    cfreq = float(metadata['cfreq'])
+    cfreq     = float(metadata['cfreq'])
 
     cfg.sa.spec.sample_frequency        = sfreq
     cfg.sa.spectrogram.sample_frequency = sfreq
-    # cfg.sa.spec.centre_frequency        = sfreq/2
     cfg.sa.spec.centre_frequency        = sfreq/4
-    
 
-    # cfg.sa.spectrogram.centre_frequency = sfreq/2
     cfg.sa.spectrogram.centre_frequency = sfreq/4
-    # cfg.sa.spectrogram.centre_frequency        = sfreq/4
-
     cfg.sa.spec.number_samples          = n_samples
     cfg.sa.spectrogram.number_samples   = n_samples
     # TODO: Set the decimation factor some other way?
     cfg.sa.spectrogram.decimation_factor = 2
     cfg.sa.spec.decimation_factor        = 2
-
-
-    print(cfg.sa.spec)
-
 
 
     if sfreq > 1e9:
@@ -131,10 +123,12 @@ def update_stream_metadata(stream_names):
 
 
 
-@dash.callback(dash.Output('stream-data', 'data'),
-            dash.Input('stream-graph-interval', 'n_intervals'),
-            dash.State({'type': 'stream-picker', 'index': dash.ALL,}, 'value'),
-            prevent_initial_call=True)
+@dash.callback(
+    dash.Output('stream-data', 'data'),
+    dash.Input('stream-graph-interval', 'n_intervals'),
+    dash.State({'type': 'stream-picker', 'index': dash.ALL,}, 'value'),
+    prevent_initial_call=True
+)
 def get_next_data(n, stream_name):
     name = stream_name[0]
     # TODO: Make sure we don't get duplicates!
@@ -142,7 +136,7 @@ def get_next_data(n, stream_name):
     rstrm = cfg.redis_instance.xrevrange(f'stream:{name}', count=1) 
 
     if (len(rstrm) == 0):
-        print("no update")
+        logger.debug("Got no new stream data from %s", f'stream:{name}')
         raise dash.exceptions.PreventUpdate
 
     d = orjson.loads(rstrm[0][1][b'data'])
@@ -203,16 +197,18 @@ def toggle_download_modal(n_open, n_close, n_load, is_open):
 
 
 @dash.callback(
-            dash.Output({'type': 'download-board-picker', 'index': dash.ALL,}, 'options'),
-            dash.Input('download-board-picker-div', 'n_clicks'),
-            dash.State("content-tabs", 'value'))
+    dash.Output({'type': 'download-board-picker', 'index': dash.ALL,}, 'options'),
+    dash.Input('download-board-picker-div', 'n_clicks'),
+    dash.State("content-tabs", 'value'),
+)
 def get_active_download_boards(n, tab):
     """
     get the currently active streams from Redis when the streams tab is clicked
     """
     if n and tab == 'content-tab-2':
         boards = cfg.redis_instance.smembers("active_command_boards")
-        print(f"GOT STREAMS: {boards}")
+        logger.debug("Got list of boards from active_command_boards: %s", boards)
+
         picker_options = [
             {'label': s.decode(), 'value': s.decode()} for s in boards
         ]
@@ -234,7 +230,6 @@ def get_active_download_boards(n, tab):
 def handle_download_request(n, board, duration, time_unit, name):
     if not n or n[0] < 1:
         raise dash.exceptions.PreventUpdate
-
 
     if time_unit[0] == 's':
         dur = duration[0]
