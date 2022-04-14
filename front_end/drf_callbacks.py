@@ -39,7 +39,7 @@ def get_next_drf_data(n, req_id):
             if len(rstrm) > 0:
                 break
         else:
-            logger.debug("Got no new value in the stream %s", f'responses:{req_id}:stream')
+            print(f"Got no new value in the stream responses:{req_id}:stream",)
             raise dash.exceptions.PreventUpdate
 
 
@@ -49,7 +49,7 @@ def get_next_drf_data(n, req_id):
     d = orjson.loads(rstrm[0][1][b'data'])
     if 'status' in d and d['status'] == 'DONE':
         # stream has finished
-        logger.debug("Finished reading all data for stream %s", f'responses:{req_id}:stream')
+        print(f"Finished reading all data for stream responses:{req_id}:stream")
         return "True", dash.no_update
 
     return dash.no_update, d
@@ -209,7 +209,7 @@ def get_drf_channel_info(n, drf_path):
     if n < 1: return dash.no_update
     req_id = cfg.redis_instance.incr('request-id')
 
-    logger.debug("Publishing request for DRF channels on %s for %s", f'requests:{req_id}:channels', drf_path[0])
+    print(f"Publishing request for DRF channels on requests:{req_id}:channels for {drf_path[0]}")
     # make a request for the channels from drf_path
     cfg.redis_instance.publish(f'requests:{req_id}:channels', drf_path[0])
 
@@ -220,7 +220,7 @@ def get_drf_channel_info(n, drf_path):
     cfg.redis_instance.delete(f'responses:{req_id}:channels')
     
     drf_channels = orjson.loads(rstrm[0][1][0][1][b'data'])
-    logger.debug('Got DigitalRF channels from Redis stream %s:\n%s', f'responses:{req_id}:channels', drf_channels)
+    print(f'Got DigitalRF channels from Redis stream responses:{req_id}:channels:\n{drf_channels}')
 
     picker_options = [
         {'label': chan, 'value': chan} for chan in drf_channels
@@ -295,12 +295,12 @@ def get_drf_sample_range(chan, drf_path):
     # send a request for samples
     req_id = cfg.redis_instance.incr('request-id')
     cfg.redis_instance.publish(f'requests:{req_id}:samples', orjson.dumps({'path': drf_path[0], 'channel': chan[0]}))
-    logger.info("publishing request on stream %s for path %s and channel %s", f'requests:{req_id}:samples', drf_path[0], chan[0])
+    print(f"publishing request on stream requests:{req_id}:samples for path {drf_path[0]} and channel {chan[0]}")
 
     # wait for the response in a stream
     try:
         rstrm = cfg.redis_instance.xread({f'responses:{req_id}:samples'.encode(): '0-0'.encode()}, block=10000, count=1) 
-        logger.debug("Received DRF sample range from stream %s: %s", f'responses:{req_id}:samples', rstrm)
+        print(f"Received DRF sample range from stream responses:{req_id}:samples: {rstrm}")
     except:
         return dash.no_update
 
@@ -485,13 +485,13 @@ def send_redis_request_and_get_metadata(n_clicks, drf_path, channel, start, stop
         'integration'  : integration[0],
     }
 
-    logger.debug("Publishing request %s with parameters:\n%s", f'requests:{req_id}:data', req)
+    print(f"Publishing request requests:{req_id}:data with parameters:\n{req}")
     cfg.redis_instance.publish(f'requests:{req_id}:data', orjson.dumps(req))
 
 
     try:
         rstrm = cfg.redis_instance.xread({f'responses:{req_id}:metadata'.encode(): '0-0'.encode()}, block=10000, count=1)
-        logger.debug("Received DRF metadata from channel %s:\n%s", f'responses:{req_id}:metadata', rstrm)
+        print(f"Received DRF metadata from channel responses:{req_id}:metadata:\n{rstrm}")
 
     except: # TODO: Timeout results in an empty rstrm, not an exception
         return "drf timeout?", dash.no_update
@@ -639,8 +639,8 @@ def handle_drf_interval(tab, drf_finished, pause, play, n):
 
     prop_id = ctx.triggered[0]['prop_id'].split('.')[0]
     if n and n[0] > 0 and (prop_id == "request-id" or "play" in prop_id) and tab == 'content-tab-1':
-        logger.debug("Enabling Digital RF interval")
+        print("Enabling Digital RF interval")
         return False
 
-    logger.debug("Disabling Digital RF interval")
+    print("Disabling Digital RF interval")
     return True

@@ -6,7 +6,7 @@ import os.path
 import yaml
 import redis
 import numpy as np
-import orjson
+import orjson # orjson should be faster than the default json library
 import json
 import time
 import argparse
@@ -29,7 +29,7 @@ class NumpyEncoder(json.JSONEncoder):
         return json.JSONEncoder.default(self, obj)
 
 def drf_requests_handler(msg):
-    print(f'got message: {msg}')
+    print(f'Got message:\n\t{msg}\n')
 
     channel = msg['channel'].decode()
     # get id for request from channel name
@@ -39,20 +39,24 @@ def drf_requests_handler(msg):
         drf_path = msg['data'].decode()
         drf_channels = get_drf_channels(drf_path)
 
-        print(f'sending: responses:{req_id}:channels, {orjson.dumps(drf_channels)}')
+        print(f'Adding to stream responses:{req_id}:channels with data: {drf_channels}')
         r.xadd(f'responses:{req_id}:channels', {'data': orjson.dumps(drf_channels)})
+
     if 'samples' in channel:
         # user is requesting the number of samples in a drf channel
         d = orjson.loads(msg['data'])
         path = d['path']
         chan = d['channel']
         n_samples = get_n_samples(path, chan)
+
+        print(f'Adding to stream responses:{req_id}:samples with data: {n_samples}')
+
         r.xadd(f'responses:{req_id}:samples', {'data': orjson.dumps(n_samples)})
 
 
     elif 'data' in channel:
         req_params = orjson.loads(msg['data'])
-        print(f'got request for data: {req_params} ')
+        print(f'Got request for data: {req_params} ')
 
         start_sample = int(req_params['start_sample'])
         stop_sample  = int(req_params['stop_sample'])
@@ -97,25 +101,23 @@ def drf_requests_handler(msg):
             spec_datas['metadata']['n_data_points']  = n_data_points
             spec_datas['metadata']['req_params']     = req_params
 
-            print(spec_datas['metadata'])
 
-
+            print(f"Adding to stream responses:{req_id}:metadata with data:\n{spec_datas['metadata']}")
             r.xadd(f'responses:{req_id}:metadata', {'data': json.dumps(spec_datas['metadata'], cls=NumpyEncoder)}) 
 
 
-            print(f"going to send {n_data_points} data points")
+            print(f"Going to send {n_data_points} data points on stream responses:{req_id}:stream")
             for i in range(n_data_points):
                 d = spec_datas['data'][i]['data']
                 r.xadd(f'responses:{req_id}:stream', {'data': orjson.dumps(d.tolist())}, maxlen=1000)
-                if (i % 100 == 0):
-                    print(f"Wrote to Redis: {i}")
+                if (i % 50 == 0):
+                    print(f"Finished writing data point #{i} on stream responses:{req_id}:stream")
+
+
             # send ending message
             r.xadd(f'responses:{req_id}:stream', {'data': orjson.dumps({'status': 'DONE'})}, maxlen=1000)
             print(f'Sent last message for responses:{req_id}:stream')
             
-
-
-
 
         except Exception as e:
             # output error message
@@ -131,6 +133,7 @@ def run_drf_stream():
 
     r.set('request-id', 0)
 
+    print("Waiting for incoming requests...")
     while True:
         p.get_message()
         time.sleep(.01)
@@ -145,6 +148,7 @@ if __name__ == '__main__':
         cfg_data = yaml.safe_load(f)
 
     # initialize redis instance based on cfg params
+    print(f"Connecting to redis server at {cfg_data['redis']['host']}:{cfg_data['redis']['port']}...")
     r = redis.Redis(host=cfg_data['redis']['host'], port=cfg_data['redis']['port'], db=0)
     p = r.pubsub(ignore_subscribe_messages=True)
 

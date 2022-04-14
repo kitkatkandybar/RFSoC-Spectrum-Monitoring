@@ -67,10 +67,6 @@ def serve_layout():
                             id='specgram-graph',
                             figure=cfg.sa.spectrogram.get_plot()
                         ),
-                        
-                        
-                       
-
                     ],
                 ),
 
@@ -122,12 +118,12 @@ def render_tab_content(tab):
         cfg.spec_datas = {}
 
     if tab == 'content-tab-1':
-        logging.debug("Switching to DigitalRF tab")
+        print("Switching to DigitalRF tab")
         # TODO: DISABLE ANY STREAMING COMPONENTS
         return drf_sidebar_components
 
     elif tab == 'content-tab-2':
-        logging.debug("Switching to Streaming tab")
+        print("Switching to Streaming tab")
 
         return stream_sidebar_components
 
@@ -263,7 +259,7 @@ def update_specgram_graph(
 
     # color scale has been updated
     elif "color" in prop_id:
-        logging.info("Changing color to: %s", color[0])
+        print("Changing color to: {}", color[0])
         cfg.sa.spectrogram.cmap = color[0]
 
     # Y-axis minimum value has been updated
@@ -305,11 +301,14 @@ if __name__ == '__main__':
         cfg_data = yaml.safe_load(f)
 
     # initialize redis instance based on cfg params
+    print(f"Connecting to redis server at {cfg_data['redis']['host']}:{cfg_data['redis']['port']}...")
     cfg.redis_instance = redis.Redis(host=cfg_data['redis']['host'], port=cfg_data['redis']['port'], db=0)
 
     # initialize host/port of Dash app based on cfg params
     host = cfg_data['dash']['host'] if cfg_data['dash']['host'] else None
     port = cfg_data['dash']['port'] if cfg_data['dash']['port'] else None
+
+
 
     # run app
     if host:
