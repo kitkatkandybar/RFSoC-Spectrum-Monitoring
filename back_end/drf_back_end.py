@@ -18,6 +18,8 @@ r = None
 p = None
 
 
+expire_time = 600 # seconds after which the redis entry should be automatically deleted
+
 class NumpyEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, np.longdouble):
@@ -41,6 +43,8 @@ def drf_requests_handler(msg):
 
         print(f'Adding to stream responses:{req_id}:channels with data: {drf_channels}')
         r.xadd(f'responses:{req_id}:channels', {'data': orjson.dumps(drf_channels)})
+        r.expire(f'responses:{req_id}:channels', expire_time)
+
 
     if 'samples' in channel:
         # user is requesting the number of samples in a drf channel
@@ -52,6 +56,7 @@ def drf_requests_handler(msg):
         print(f'Adding to stream responses:{req_id}:samples with data: {n_samples}')
 
         r.xadd(f'responses:{req_id}:samples', {'data': orjson.dumps(n_samples)})
+        r.expire(f'responses:{req_id}:samples', expire_time)
 
 
     elif 'data' in channel:
@@ -103,19 +108,22 @@ def drf_requests_handler(msg):
 
 
             print(f"Adding to stream responses:{req_id}:metadata with data:\n{spec_datas['metadata']}")
-            r.xadd(f'responses:{req_id}:metadata', {'data': json.dumps(spec_datas['metadata'], cls=NumpyEncoder)}) 
+            r.xadd(f'responses:{req_id}:metadata', {'data': json.dumps(spec_datas['metadata'], cls=NumpyEncoder)})
+            r.expire(f'responses:{req_id}:metadata', expire_time)
 
 
             print(f"Going to send {n_data_points} data points on stream responses:{req_id}:stream")
             for i in range(n_data_points):
                 d = spec_datas['data'][i]['data']
-                r.xadd(f'responses:{req_id}:stream', {'data': orjson.dumps(d.tolist())}, maxlen=1000)
+                r.xadd(f'responses:{req_id}:stream', {'data': orjson.dumps(d.tolist())}, maxlen=100000)
                 if (i % 50 == 0):
                     print(f"Finished writing data point #{i} on stream responses:{req_id}:stream")
 
 
             # send ending message
-            r.xadd(f'responses:{req_id}:stream', {'data': orjson.dumps({'status': 'DONE'})}, maxlen=1000)
+            r.xadd(f'responses:{req_id}:stream', {'data': orjson.dumps({'status': 'DONE'})}, maxlen=100000)
+            r.expire(f'responses:{req_id}:stream', expire_time)
+
             print(f'Sent last message for responses:{req_id}:stream')
             
 

@@ -19,22 +19,27 @@ import config as cfg
     dash.Output('drf-data', 'data'),
     dash.Input('drf-interval', 'n_intervals'),
     dash.State('request-id', 'data'),
+    dash.State('session-id', 'data'),
     prevent_initial_call=True
 )
-def get_next_drf_data(n, req_id):
+def get_next_drf_data(n, req_id, session_id):
     """
     Gets the next digitalRF data point to display, whenever drf-interval is fire
     """
 
-    # TODO: fix this, the last id seen should not be stored in redis like this. 
-    last_r_id = cfg.redis_instance.get("last-drf-id").decode()
+    # TODO: Storing this value inside of redis may not be the smartest idea 
+    last_r_id = cfg.redis_instance.get(f"{session_id}:last-drf-id").decode()
+    # incremement the ID value so redis knows to pick the next value in the stream
+    # NOTE: this could be omitted if an "exclusive range" syntax is used in the xrange redis command,
+    # however that syntax is only available in newer versions of Redis (>= 6.2) and should likely be avoided as such
+    ids       = last_r_id.split('-')
+    last_r_id = f'{ids[0]}-{int(ids[1])+1}'
 
     # get the next value after last_r_id in the stream
-    # Note: the min="({id}" syntax only works with newer versions of Redis
-    rstrm = cfg.redis_instance.xrange(f'responses:{req_id}:stream', min=f"({last_r_id}", count=1) 
+    rstrm = cfg.redis_instance.xrange(f'responses:{req_id}:stream', min=f"{last_r_id}", count=1) 
     if (len(rstrm) == 0):
         for i in range(5):
-            rstrm = cfg.redis_instance.xrange(f'responses:{req_id}:stream', min=f"({last_r_id}", count=1)
+            rstrm = cfg.redis_instance.xrange(f'responses:{req_id}:stream', min=f"{last_r_id}", count=1)
             time.sleep(0.1)
             if len(rstrm) > 0:
                 break
@@ -44,7 +49,7 @@ def get_next_drf_data(n, req_id):
 
 
     new_r_id = rstrm[0][0].decode()
-    cfg.redis_instance.set("last-drf-id", new_r_id)
+    cfg.redis_instance.set(f"{session_id}:last-drf-id", new_r_id, ex=cfg.expire_time)
 
     d = orjson.loads(rstrm[0][1][b'data'])
     if 'status' in d and d['status'] == 'DONE':
@@ -52,6 +57,7 @@ def get_next_drf_data(n, req_id):
         print(f"Finished reading all data for stream responses:{req_id}:stream")
         return "True", dash.no_update
 
+    # TODO: delete stream data from redis server, somehow
     return dash.no_update, d
 
 
@@ -462,8 +468,9 @@ def toggle_modal(n_open, n_close, n_load, is_open):
     dash.State({'type': 'bins-slider', 'index': dash.ALL,}, 'value'),
     dash.State({'type': 'modulus-input', 'index': dash.ALL,}, 'value'),
     dash.State({'type': 'integration-input', 'index': dash.ALL,}, 'value'),
+    dash.State('session-id', 'data'),
 )
-def send_redis_request_and_get_metadata(n_clicks, drf_path, channel, start, stop, bins, modulus, integration):
+def send_redis_request_and_get_metadata(n_clicks, drf_path, channel, start, stop, bins, modulus, integration, session_id):
     """
     Sends a request to the back end for DigitalRF data when "load data" button is clicked, 
     and receives the metadata from the request
@@ -501,7 +508,7 @@ def send_redis_request_and_get_metadata(n_clicks, drf_path, channel, start, stop
     metadata = orjson.loads(rstrm[0][1][0][1][b'data'])
 
     # Initialize the playback index to the first value in the stream
-    cfg.redis_instance.set("last-drf-id", "0-0")
+    cfg.redis_instance.set(f"{session_id}:last-drf-id", "0-0")
 
     # update internal metadata and parameters
     cfg.spec_datas = {}
@@ -558,7 +565,6 @@ def redis_update_load_data_button(n):
     return False
 
 
-
 @dash.callback(
     dash.Output({'type': 'drf-play', 'index': 0}, 'disabled'),
     dash.Input({'type': 'drf-load', 'index': dash.ALL,}, 'n_clicks'),
@@ -606,14 +612,15 @@ def enable_pause_data_button(n, interval_disabled):
 @dash.callback(
     dash.Output('placeholder', 'data'),
     dash.Input({'type': 'drf-rewind', 'index': dash.ALL,}, 'n_clicks'),
+    dash.State('session-id', 'data'),
 )
-def handle_rewind_data_button(n):
+def handle_rewind_data_button(n, session_id):
     """
     When the rewind button is clicked, reset the last drf data point seen to the beginning
     and clear the spectrogram waterfall plot
     """
     if n and n[0] < 1: raise dash.exceptions.PreventUpdate
-    cfg.redis_instance.set("last-drf-id", "0-0")
+    cfg.redis_instance.set(f"{session_id}:last-drf-id", "0-0")
 
     # TODO: Move this into update_specgram_graph()?
     cfg.sa.spectrogram.clear_data()

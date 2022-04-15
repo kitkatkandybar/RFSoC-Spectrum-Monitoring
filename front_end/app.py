@@ -86,7 +86,7 @@ def serve_layout():
             disabled=True,
         ),
         # Store values for storing data between callbacks
-        dcc.Store(data=session_id, id='session-id'),
+        dcc.Store(id='session-id', data=session_id),
         dcc.Store(id='request-id', data=-1),
         dcc.Store(id='graph_data_index', data=0,),
         dcc.Store(id='stream-data'),

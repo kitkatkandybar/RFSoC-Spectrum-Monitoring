@@ -6,3 +6,6 @@ from spectrum_analyzer import SpectrumAnalyzer
 sa             = SpectrumAnalyzer()
 spec_datas     = None
 redis_instance = None
+
+# the seconds after which to delete redis keys
+expire_time    = 3600

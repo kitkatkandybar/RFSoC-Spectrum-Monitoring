@@ -20,6 +20,7 @@ p = None
 
 
 def run_mock_live_stream(stream_name, file_path):
+    print(f"Running mock stream with name {stream_name} using data from {file_path}")
 
     spec_datas = read_digital_rf_data(
         [file_path], plot_file=None, plot_type="spectrum", channel='discone',
@@ -28,26 +29,35 @@ def run_mock_live_stream(stream_name, file_path):
                 zscale=(0, 0), bins=1024, log_scale=False, detrend=False,msl_code_length=0,
                 msl_baud_length=0)
 
-
+    print("Got frequency data from DigitalRF file...")
     y_max = max([max(d['data']) for d in spec_datas['data']])
     y_min = min([min(d['data']) for d in spec_datas['data']])
     spec_datas['metadata']['y_max']      = y_max
     spec_datas['metadata']['y_min']      = y_min
 
-    spec_datas['metadata']['n_samples']  = spec_datas['data'][0]['data'].shape[0]
+    # spec_datas['metadata']['n_samples']  = spec_datas['data'][0]['data'].shape[0]
+    metadata = {
+        'y_max': y_max,
+        'y_min': y_min,
+        'sfreq': spec_datas['metadata']['sfreq'],
+        'cfreq': spec_datas['metadata']['cfreq'],
+        'channel': spec_datas['metadata']['channel'],
+        'n_samples': spec_datas['data'][0]['data'].shape[0],
+    }
 
+    print(f"Metdata: {metadata}")
 
     r.sadd("active_streams", stream_name)
-    
-    r.hset(f"metadata:{stream_name}", mapping=spec_datas['metadata'])
+    print(f"Setting metadata....")
+    r.hset(f"metadata:{stream_name}", mapping=metadata)
 
     try:
         while True:
             for i in range(len(spec_datas['data'])):
                 d = spec_datas['data'][i]['data']
-                r.xadd(f'stream:{stream_name}', {'data': json.dumps(d.tolist())}, maxlen=2000)
-                if (i % 100 == 0):
-                    print(f"Wrote to Redis: {i}")
+                r.xadd(f'stream:{stream_name}', {'data': json.dumps(d.tolist())}, maxlen=20000)
+                if (i % 10 == 0):
+                    print(f"Wrote data with index {i} to redis")
                 time.sleep(0.05)
     except KeyboardInterrupt:
         print("Caught keyboard interrupt..")
