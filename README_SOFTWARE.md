@@ -2,6 +2,8 @@
 
 This project consists of three separate applications: the back end, the front end, and the board code. 
 
+## Module Descriptions
+
 ### ./back_end/
 
 This folder contains all of the code for python back end of the project. This mostly contains code for processing Digital RF data to send to the front end. 
@@ -60,7 +62,16 @@ This folder contains all of the code for the Dash-based Web application part of 
 
 - **stream_components.py**
 	- This file contains Dash components specific to the streaming portion of the web application.
+## Flow charts
 
+### front_end/
+<img width="960" alt="image" src="https://user-images.githubusercontent.com/90095970/164514863-944ff05e-b6c8-4229-a2fa-31d390a41d93.png">
+
+### back_end/
+<img width="757" alt="image" src="https://user-images.githubusercontent.com/90095970/164515508-1e2b1e9a-021a-45da-8d60-26df1d85b1a7.png">
+
+### Component interactions
+<img width="960" alt="image" src="https://user-images.githubusercontent.com/90095970/164515815-5505aee8-cee9-4f86-9069-38737345d7fb.png">
 
 ## Dev/Build information
 
