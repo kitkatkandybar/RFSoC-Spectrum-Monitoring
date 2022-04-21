@@ -14,6 +14,8 @@ import orjson
 import config as cfg
 
 
+REQUEST_TIMEOUT = 5000 # 5 seconds
+
 @dash.callback(
     dash.Output("drf-data-finished", 'data'),
     dash.Output('drf-data', 'data'),
@@ -27,11 +29,14 @@ def get_next_drf_data(n, req_id, session_id):
     Gets the next digitalRF data point to display, whenever drf-interval is fire
     """
 
-    # TODO: Storing this value inside of redis may not be the smartest idea 
+    # TODO: Storing this value inside of redis may not be the smartest idea, but 
+    # storing it as a Dash.Store component would also be messy!
     last_r_id = cfg.redis_instance.get(f"{session_id}:last-drf-id").decode()
+
     # incremement the ID value so redis knows to pick the next value in the stream
     # NOTE: this could be omitted if an "exclusive range" syntax is used in the xrange redis command,
-    # however that syntax is only available in newer versions of Redis (>= 6.2) and should likely be avoided as such
+    # however that syntax is only available in newer versions of Redis (>= 6.2) and as such it 
+    # is easier to avoid this
     ids       = last_r_id.split('-')
     last_r_id = f'{ids[0]}-{int(ids[1])+1}'
 
@@ -57,7 +62,6 @@ def get_next_drf_data(n, req_id, session_id):
         print(f"Finished reading all data for stream responses:{req_id}:stream")
         return "True", dash.no_update
 
-    # TODO: delete stream data from redis server, somehow
     return dash.no_update, d
 
 
@@ -98,7 +102,6 @@ def update_metadeta_output(req_id, tab):
     # reset the metadata whenever the website tabs have been switched
     if prop_id == "content-tabs":
         return None
-
 
     # TODO: Check to make sure all of these keys exist before dereferencing them
     try:
@@ -204,6 +207,17 @@ def update_metadeta_output(req_id, tab):
 ###################################################################################################
 
 @dash.callback(
+    dash.Output('input-dir-button', 'disabled'),
+    dash.Input({'type': 'drf-path', 'index': dash.ALL,}, 'value'),
+)
+def input_dir_button_disabled(drf_path):
+    """ Disable the 'Select DigitalRF file' when no path has been specified"""
+    if drf_path[0]:
+        return False
+    return True
+
+
+@dash.callback(
     dash.Output(component_id='channel-div', component_property='children'),
     dash.Input('input-dir-button', 'n_clicks'),
     dash.State({'type': 'drf-path', 'index': dash.ALL,}, 'value'),
@@ -219,10 +233,11 @@ def get_drf_channel_info(n, drf_path):
     # make a request for the channels from drf_path
     cfg.redis_instance.publish(f'requests:{req_id}:channels', drf_path[0])
 
-    try:
-        rstrm = cfg.redis_instance.xread({f'responses:{req_id}:channels'.encode(): '0-0'.encode()}, block=10000, count=1) 
-    except:
-        return dash.no_update
+    rstrm = cfg.redis_instance.xread({f'responses:{req_id}:channels'.encode(): '0-0'.encode()}, block=REQUEST_TIMEOUT, count=1) 
+    if not rstrm:
+        print("Channels timed out")
+        return "Error, could not load channels, try again"
+
     cfg.redis_instance.delete(f'responses:{req_id}:channels')
     
     drf_channels = orjson.loads(rstrm[0][1][0][1][b'data'])
@@ -304,12 +319,11 @@ def get_drf_sample_range(chan, drf_path):
     print(f"publishing request on stream requests:{req_id}:samples for path {drf_path[0]} and channel {chan[0]}")
 
     # wait for the response in a stream
-    try:
-        rstrm = cfg.redis_instance.xread({f'responses:{req_id}:samples'.encode(): '0-0'.encode()}, block=10000, count=1) 
-        print(f"Received DRF sample range from stream responses:{req_id}:samples: {rstrm}")
-    except:
+    rstrm = cfg.redis_instance.xread({f'responses:{req_id}:samples'.encode(): '0-0'.encode()}, block=REQUEST_TIMEOUT, count=1) 
+    if not rstrm:
+        print("Sample request timed out")
         return dash.no_update
-
+    print(f"Received DRF sample range from stream responses:{req_id}:samples: {rstrm}")
     cfg.redis_instance.delete(f'responses:{req_id}:samples')
     
     n_samples = orjson.loads(rstrm[0][1][0][1][b'data'])
@@ -458,7 +472,7 @@ def toggle_modal(n_open, n_close, n_load, is_open):
 
 
 @dash.callback(
-    dash.Output('drf-err', 'children'),
+    dash.Output('drf-form-err', 'children'),
     dash.Output('request-id', 'data'),
     dash.Input({'type': 'drf-load', 'index': dash.ALL}, 'n_clicks'),
     dash.State({'type': 'drf-path', 'index': dash.ALL,}, 'value'),
@@ -494,14 +508,15 @@ def send_redis_request_and_get_metadata(n_clicks, drf_path, channel, start, stop
 
     print(f"Publishing request requests:{req_id}:data with parameters:\n{req}")
     cfg.redis_instance.publish(f'requests:{req_id}:data', orjson.dumps(req))
+    cfg.redis_instance.expire(f'requests:{req_id}:data', cfg.expire_time)
 
 
-    try:
-        rstrm = cfg.redis_instance.xread({f'responses:{req_id}:metadata'.encode(): '0-0'.encode()}, block=10000, count=1)
-        print(f"Received DRF metadata from channel responses:{req_id}:metadata:\n{rstrm}")
+    rstrm = cfg.redis_instance.xread({f'responses:{req_id}:metadata'.encode(): '0-0'.encode()}, block=REQUEST_TIMEOUT, count=1)
+    print(f"Received DRF metadata from channel responses:{req_id}:metadata:\n{rstrm}")
 
-    except: # TODO: Timeout results in an empty rstrm, not an exception
-        return "drf timeout?", dash.no_update
+    if not rstrm:
+        print("Tiemeout")
+        return "Error", dash.no_update
 
     cfg.redis_instance.delete(f'responses:{req_id}:metadata')
 
@@ -620,7 +635,7 @@ def handle_rewind_data_button(n, session_id):
     and clear the spectrogram waterfall plot
     """
     if n and n[0] < 1: raise dash.exceptions.PreventUpdate
-    cfg.redis_instance.set(f"{session_id}:last-drf-id", "0-0")
+    cfg.redis_instance.set(f"{session_id}:last-drf-id", "0-0", ex=cfg.expire_time)
 
     # TODO: Move this into update_specgram_graph()?
     cfg.sa.spectrogram.clear_data()

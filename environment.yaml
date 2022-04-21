@@ -3,14 +3,11 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - pandas
   - dash
-  - jupyter-dash
   - dash-core-components
   - dash-html-components
   - dash-bootstrap-components
   - digital_rf
-  - ipywidgets
   - matplotlib
   - scipy
   - redis

@@ -22,7 +22,8 @@ drf_form_modal = html.Div(
                                 id={'type': "drf-path", 'index': 0,}, 
                                 type="text",
                                 value="",
-                                style={'width': '100%'}
+                                placeholder="Enter the path to the Digtal RF Directory",
+                                style={'width': '100%'},
                             ),
                             className="me-3",
                             # width=6,
@@ -33,12 +34,14 @@ drf_form_modal = html.Div(
                                 id='input-dir-button', 
                                 n_clicks=0,
                                 color="primary",
+                                disabled=True,
                             ),
                             width="auto",
                         ),
                         
+                        
                     ]),
-                    html.Div(id='drf-err'),
+                    html.Div(id='drf-form-err'),
                     dcc.Loading(
                         id="channel-loading",
                         children=[

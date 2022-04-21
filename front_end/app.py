@@ -34,6 +34,8 @@ import config as cfg
 # create a Dash app
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.SANDSTONE, dbc.icons.BOOTSTRAP], suppress_callback_exceptions=True)
 
+
+
 def serve_layout():
     session_id = str(uuid.uuid4())
 

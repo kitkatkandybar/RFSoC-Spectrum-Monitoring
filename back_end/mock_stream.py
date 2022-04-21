@@ -37,11 +37,11 @@ def run_mock_live_stream(stream_name, file_path):
 
     # spec_datas['metadata']['n_samples']  = spec_datas['data'][0]['data'].shape[0]
     metadata = {
-        'y_max': y_max,
-        'y_min': y_min,
-        'sfreq': spec_datas['metadata']['sfreq'],
-        'cfreq': spec_datas['metadata']['cfreq'],
-        'channel': spec_datas['metadata']['channel'],
+        'y_max':     y_max,
+        'y_min':     y_min,
+        'sfreq':     spec_datas['metadata']['sfreq'],
+        'cfreq':     spec_datas['metadata']['cfreq'],
+        'channel':   spec_datas['metadata']['channel'],
         'n_samples': spec_datas['data'][0]['data'].shape[0],
     }
 

@@ -10,4 +10,5 @@
 
 .accordion-body {
     overflow-x: auto;
+    overflow-y: visible;
 }
