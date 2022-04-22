@@ -17,7 +17,8 @@ ldconfig
 
 Windows users will have to make a slight change to the cmake line. Again follow the instructions in the [OOT install section](https://wiki.gnuradio.org/index.php/CondaInstall#Building_OOT_modules_to_use_with_conda-installed_GNU_Radio).
 
-## Making an image so this works
+## Making an image for gr-paint
+
 There are instructions in the readme of [gr-paint](https://github.com/drmpeg/gr-paint) but here's the basic part.
 
 First go to the grpaint directory and build the tgatoluma.c file that in the base directory. Here's the linux/macos way to do it.
@@ -32,6 +33,8 @@ Next install [ImageMagick](https://imagemagick.org/script/index.php). Once insta
 convert <imagename.png> <imagename.tga>
 ./tgatoluma <imagename.tga> <imagename.bin>
 ```
+
+If the waterfall plot starts from the top use `-flip` flag in the convert command.
 
 
 
