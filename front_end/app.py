@@ -304,7 +304,7 @@ if __name__ == '__main__':
 
     # initialize redis instance based on cfg params
     print(f"Connecting to redis server at {cfg_data['redis']['host']}:{cfg_data['redis']['port']}...")
-    cfg.redis_instance = redis.Redis(host=cfg_data['redis']['host'], port=cfg_data['redis']['port'], db=0)
+    cfg.redis_instance = redis.Redis(host=cfg_data['redis']['host'], port=cfg_data['redis']['port'], db=0, password=cfg_data['redis']['password'])
 
     # initialize host/port of Dash app based on cfg params
     host = cfg_data['dash']['host'] if cfg_data['dash']['host'] else None

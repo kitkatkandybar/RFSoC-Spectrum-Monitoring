@@ -1,6 +1,8 @@
 redis:
-  host: 'localhost'
+  host: '168.122.10.40'
   port: 6379
+  password: 'Qsh4r9.VlMj5_HrvY#0f36'
+
 dash:
   host: '127.0.0.1'
   port: '8050'

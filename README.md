@@ -37,7 +37,7 @@ A Redis server is necessary to run this application. Redis requires a UNIX machi
 
 To run the application, first start running redis in a terminal on any PC. This can be done with the command:
 ```
-redis-server
+sudo redis-server redis.conf
 ```
 
 ### Board - Streaming data
