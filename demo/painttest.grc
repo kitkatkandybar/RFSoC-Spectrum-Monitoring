@@ -37,7 +37,7 @@ blocks:
   id: variable
   parameters:
     comment: ''
-    value: int(88.9e6)
+    value: int(915e6)
   states:
     bus_sink: false
     bus_source: false
@@ -45,11 +45,23 @@ blocks:
     coordinate: [64, 320.0]
     rotation: 0
     state: enabled
+- name: gain
+  id: variable
+  parameters:
+    comment: ''
+    value: '3'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [56, 432.0]
+    rotation: 0
+    state: enabled
 - name: samp_rate
   id: variable
   parameters:
     comment: ''
-    value: int(1e5)
+    value: int(2.4e6)
   states:
     bus_sink: false
     bus_source: false
@@ -64,7 +76,7 @@ blocks:
     alias: ''
     begin_tag: pmt.PMT_NIL
     comment: ''
-    file: /Users/swoboj/Documents/Python/GNURadio/grcfiles/marcy.bin
+    file: /Users/swoboj/Documents/Python/GNURadio/grpaintimages/MIT_HO_logo_square.bin
     length: '0'
     maxoutbuf: '0'
     minoutbuf: '0'
@@ -79,6 +91,24 @@ blocks:
     coordinate: [240, 368.0]
     rotation: 0
     state: enabled
+- name: blocks_multiply_const_vxx_0
+  id: blocks_multiply_const_vxx
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    const: gain
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    type: complex
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [888, 372.0]
+    rotation: 0
+    state: true
 - name: blocks_throttle_0
   id: blocks_throttle
   parameters:
@@ -121,7 +151,38 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [904, 360.0]
+    coordinate: [1072, 360.0]
+    rotation: 0
+    state: true
+- name: iio_pluto_source_0
+  id: iio_pluto_source
+  parameters:
+    affinity: ''
+    alias: ''
+    bandwidth: '20000000'
+    bbdc: 'True'
+    buffer_size: '32768'
+    comment: ''
+    filter: ''
+    filter_source: '''Auto'''
+    fpass: '0'
+    frequency: fc
+    fstop: '0'
+    gain1: '''manual'''
+    len_tag_key: packet_len
+    manual_gain1: '40'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    quadrature: 'True'
+    rfdc: 'True'
+    samplerate: samp_rate
+    type: fc32
+    uri: ''
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [480, 540.0]
     rotation: 0
     state: true
 - name: paint_paint_bc_0
@@ -135,7 +196,7 @@ blocks:
     minoutbuf: '0'
     randomsrc: INTERNAL
     repeats: '4'
-    width: '1920'
+    width: '2200'
   states:
     bus_sink: false
     bus_source: false
@@ -143,10 +204,41 @@ blocks:
     coordinate: [456, 384.0]
     rotation: 0
     state: true
+- name: qtgui_sink_x_0
+  id: qtgui_sink_x
+  parameters:
+    affinity: ''
+    alias: ''
+    bw: samp_rate
+    comment: ''
+    fc: '0'
+    fftsize: '1024'
+    gui_hint: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    name: '""'
+    plotconst: 'True'
+    plotfreq: 'True'
+    plottime: 'True'
+    plotwaterfall: 'True'
+    rate: '10'
+    showports: 'False'
+    showrf: 'False'
+    type: complex
+    wintype: window.WIN_BLACKMAN_hARRIS
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [904, 584.0]
+    rotation: 0
+    state: true
 
 connections:
 - [blocks_file_source_0, '0', paint_paint_bc_0, '0']
-- [blocks_throttle_0, '0', iio_pluto_sink_0, '0']
+- [blocks_multiply_const_vxx_0, '0', iio_pluto_sink_0, '0']
+- [blocks_throttle_0, '0', blocks_multiply_const_vxx_0, '0']
+- [iio_pluto_source_0, '0', qtgui_sink_x_0, '0']
 - [paint_paint_bc_0, '0', blocks_throttle_0, '0']
 
 metadata:

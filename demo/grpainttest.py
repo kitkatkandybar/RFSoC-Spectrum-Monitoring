@@ -20,14 +20,16 @@ if __name__ == '__main__':
         except:
             print("Warning: failed to XInitThreads()")
 
+from PyQt5 import Qt
+from gnuradio import qtgui
+from gnuradio.filter import firdes
+import sip
 from gnuradio import blocks
 import pmt
 from gnuradio import gr
-from gnuradio.filter import firdes
 from gnuradio.fft import window
 import sys
 import signal
-from PyQt5 import Qt
 from argparse import ArgumentParser
 from gnuradio.eng_arg import eng_float, intx
 from gnuradio import eng_notation
@@ -74,13 +76,42 @@ class grpainttest(gr.top_block, Qt.QWidget):
         ##################################################
         # Variables
         ##################################################
-        self.samp_rate = samp_rate = int(1e5)
-        self.fc = fc = int(88.9e6)
+        self.samp_rate = samp_rate = int(2.4e6)
+        self.gain = gain = 3
+        self.fc = fc = int(915e6)
 
         ##################################################
         # Blocks
         ##################################################
-        self.paint_paint_bc_0 = paint.paint_bc(1920, 4, paint.EQUALIZATION_OFF, paint.INTERNAL, 1)
+        self.qtgui_sink_x_0 = qtgui.sink_c(
+            1024, #fftsize
+            window.WIN_BLACKMAN_hARRIS, #wintype
+            0, #fc
+            samp_rate, #bw
+            "", #name
+            True, #plotfreq
+            True, #plotwaterfall
+            True, #plottime
+            True, #plotconst
+            None # parent
+        )
+        self.qtgui_sink_x_0.set_update_time(1.0/10)
+        self._qtgui_sink_x_0_win = sip.wrapinstance(self.qtgui_sink_x_0.qwidget(), Qt.QWidget)
+
+        self.qtgui_sink_x_0.enable_rf_freq(False)
+
+        self.top_layout.addWidget(self._qtgui_sink_x_0_win)
+        self.paint_paint_bc_0 = paint.paint_bc(2200, 4, paint.EQUALIZATION_OFF, paint.INTERNAL, 1)
+        self.iio_pluto_source_0 = iio.fmcomms2_source_fc32('' if '' else iio.get_pluto_uri(), [True, True], 32768)
+        self.iio_pluto_source_0.set_len_tag_key('packet_len')
+        self.iio_pluto_source_0.set_frequency(fc)
+        self.iio_pluto_source_0.set_samplerate(samp_rate)
+        self.iio_pluto_source_0.set_gain_mode(0, 'manual')
+        self.iio_pluto_source_0.set_gain(0, 40)
+        self.iio_pluto_source_0.set_quadrature(True)
+        self.iio_pluto_source_0.set_rfdc(True)
+        self.iio_pluto_source_0.set_bbdc(True)
+        self.iio_pluto_source_0.set_filter_params('Auto', '', 0, 0)
         self.iio_pluto_sink_0 = iio.fmcomms2_sink_fc32('' if '' else iio.get_pluto_uri(), [True, True], 32768, False)
         self.iio_pluto_sink_0.set_len_tag_key('')
         self.iio_pluto_sink_0.set_bandwidth(20000000)
@@ -89,7 +120,8 @@ class grpainttest(gr.top_block, Qt.QWidget):
         self.iio_pluto_sink_0.set_attenuation(0, 0.)
         self.iio_pluto_sink_0.set_filter_params('Auto', '', 0, 0)
         self.blocks_throttle_0 = blocks.throttle(gr.sizeof_gr_complex*1, samp_rate,True)
-        self.blocks_file_source_0 = blocks.file_source(gr.sizeof_char*1, '/Users/swoboj/Documents/Python/GNURadio/gr-paint/apps/marcy.bin', True, 0, 0)
+        self.blocks_multiply_const_vxx_0 = blocks.multiply_const_cc(gain)
+        self.blocks_file_source_0 = blocks.file_source(gr.sizeof_char*1, '/Users/swoboj/Documents/Python/GNURadio/grpaintimages/MIT_HO_logo_square.bin', True, 0, 0)
         self.blocks_file_source_0.set_begin_tag(pmt.PMT_NIL)
 
 
@@ -97,7 +129,9 @@ class grpainttest(gr.top_block, Qt.QWidget):
         # Connections
         ##################################################
         self.connect((self.blocks_file_source_0, 0), (self.paint_paint_bc_0, 0))
-        self.connect((self.blocks_throttle_0, 0), (self.iio_pluto_sink_0, 0))
+        self.connect((self.blocks_multiply_const_vxx_0, 0), (self.iio_pluto_sink_0, 0))
+        self.connect((self.blocks_throttle_0, 0), (self.blocks_multiply_const_vxx_0, 0))
+        self.connect((self.iio_pluto_source_0, 0), (self.qtgui_sink_x_0, 0))
         self.connect((self.paint_paint_bc_0, 0), (self.blocks_throttle_0, 0))
 
 
@@ -116,6 +150,15 @@ class grpainttest(gr.top_block, Qt.QWidget):
         self.samp_rate = samp_rate
         self.blocks_throttle_0.set_sample_rate(self.samp_rate)
         self.iio_pluto_sink_0.set_samplerate(self.samp_rate)
+        self.iio_pluto_source_0.set_samplerate(self.samp_rate)
+        self.qtgui_sink_x_0.set_frequency_range(0, self.samp_rate)
+
+    def get_gain(self):
+        return self.gain
+
+    def set_gain(self, gain):
+        self.gain = gain
+        self.blocks_multiply_const_vxx_0.set_k(self.gain)
 
     def get_fc(self):
         return self.fc
@@ -123,6 +166,7 @@ class grpainttest(gr.top_block, Qt.QWidget):
     def set_fc(self, fc):
         self.fc = fc
         self.iio_pluto_sink_0.set_frequency(self.fc)
+        self.iio_pluto_source_0.set_frequency(self.fc)
 
 
 

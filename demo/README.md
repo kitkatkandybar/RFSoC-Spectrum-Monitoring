@@ -17,6 +17,24 @@ ldconfig
 
 Windows users will have to make a slight change to the cmake line. Again follow the instructions in the [OOT install section](https://wiki.gnuradio.org/index.php/CondaInstall#Building_OOT_modules_to_use_with_conda-installed_GNU_Radio).
 
+## Making an image so this works
+There are instructions in the readme of [gr-paint](https://github.com/drmpeg/gr-paint) but here's the basic part.
+
+First go to the grpaint directory and build the tgatoluma.c file that in the base directory. Here's the linux/macos way to do it.
+
+```bash
+gcc -o tgatoluma tgatoluma.c
+```
+
+Next install [ImageMagick](https://imagemagick.org/script/index.php). Once installed you can run commands to convert the files. First create at tga file.
+
+```bash
+convert <imagename.png> <imagename.tga>
+./tgatoluma <imagename.tga> <imagename.bin>
+```
+
+
+
 ## Running the Demo
 
 Open up GNURadio Companion. In gnuradio companion open up painttest.grc. Fill out the grc file to have the correct settings, e.g. pluto usb location and the name of the bin file. The file needs to be a binary file to work properly but you can change most image files into binary files easily. Run the GRC file with a pluto that has a TX antenna and see if the image pops up.
