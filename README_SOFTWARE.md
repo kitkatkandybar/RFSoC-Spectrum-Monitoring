@@ -81,6 +81,13 @@ This folder contains Jupter Notebook files written for the RFSoC board for this 
 ### Component interactions
 <img width="960" alt="image" src="https://user-images.githubusercontent.com/90095970/164515815-5505aee8-cee9-4f86-9069-38737345d7fb.png">
 
+### Live streaming board data feature
+<img width="443" alt="image" src="https://user-images.githubusercontent.com/90095970/165988906-b7b768fa-f46e-45d2-9234-01fc5df658e3.png">
+
+### Downloading board data feature
+<img width="464" alt="image" src="https://user-images.githubusercontent.com/90095970/165988843-c28daef3-027a-4a11-87a8-a6070f30b97c.png">
+
+
 ## Dev/Build information
 
 This project was tested using the following package versions on PC running Windows 11:
