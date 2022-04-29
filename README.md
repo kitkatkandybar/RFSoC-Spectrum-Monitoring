@@ -35,10 +35,13 @@ conda env create -f environment.yaml
 A Redis server is necessary to run this application. Redis requires a UNIX machine. Downloading and installation instructions can be found here: https://redis.io/download.
 
 
-To run the application, first start running redis in a terminal on any PC. This can be done with the command:
+To run the application, first start running redis in a terminal on any PC that has the repository code downloaded. From the top directory of the project (/RFSoC-Spectrum-Monitoring) execute the following command:
 ```
-sudo redis-server redis.conf
+redis-server redis.conf
 ```
+In case you want to change the password of the redis server, it would need to be changed on all three components of the set up: redis.conf file which sets up the server, /front_end/config.yaml file and in the file which will be executed in the board when creating the redis instance:
+
+r = redis.Redis(host='SERVER_IP', port=6379, db=0, password='NEW_PASSWORD')
 
 ### Board - Streaming data
 
@@ -87,7 +90,7 @@ The front end will read the data from the Redis stream and display it in the Das
 
 ## Current State of the Project
 
-- At this point in time, this project was developed and tested only handlng one user at a time. Being able to process multiple users will likely involve having to restructure certain portions of the codebase. Specifically, the global variables found in front_end/config.py will have to be either cached or stored locally per-user for this application to work for multiple users. [This page](https://dash.plotly.com/sharing-data-between-callbacks) may provide ideas for how to make this work. The most difficult challenge will likely be to restructure the Spectrum and Spectrogram classes (or their corresponding data) to be stored/cached. 
+- At this point in time, this project was developed and tested only handling one user at a time. Being able to process multiple users will likely involve having to restructure certain portions of the codebase. Specifically, the global variables found in front_end/config.py will have to be either cached or stored locally per-user for this application to work for multiple users. [This page](https://dash.plotly.com/sharing-data-between-callbacks) may provide ideas for how to make this work. The most difficult challenge will likely be to restructure the Spectrum and Spectrogram classes (or their corresponding data) to be stored/cached. 
  
 
 
@@ -98,8 +101,6 @@ The front end will read the data from the Redis stream and display it in the Das
 - The error handling for this application is not robust. Bugs and errors can and do happen, especially if you misclick or input some invalid values. The best way of dealing with an issue is to refresh the page, or restart any and all of the components involved (the Dash application, the back-end scripts, and so on).
 
 - Sometimes, a Dash callback gets dropped, and as such the action involved does not get completed. This can lead to misaligned graph axes, a data point being missed on the graph, information not being populated, and so on. The fix for this is to just repeat the action again, or to refresh the page if the error is bad enough. We believe this is likely due to Dash throttling callbacks when the rate gets too high, but we are not sure, and have not found a consistent fix. 
-
-- The Redis server currently is running with "protected-mode" off, this should be changed
 
 
 ### Ideas for further improvement
