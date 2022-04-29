@@ -69,11 +69,13 @@ def update_stream_metadata(stream_names):
 
     cfg.sa.spec.sample_frequency        = sfreq
     cfg.sa.spectrogram.sample_frequency = sfreq
-    cfg.sa.spec.centre_frequency        = sfreq/4
 
+    # TODO: This is likely not the best way to set center frequency for the graphs
+    cfg.sa.spec.centre_frequency        = sfreq/4
     cfg.sa.spectrogram.centre_frequency = sfreq/4
     cfg.sa.spec.number_samples          = n_samples
     cfg.sa.spectrogram.number_samples   = n_samples
+
     # TODO: Set the decimation factor some other way?
     cfg.sa.spectrogram.decimation_factor = 2
     cfg.sa.spec.decimation_factor        = 2
@@ -242,7 +244,8 @@ def handle_download_request(n, board, duration, time_unit, name):
     board_name = board[0]
 
 
-    req = {
+    req = 
+    {
         'duration'     : dur
     }
 
@@ -257,26 +260,16 @@ def handle_download_request(n, board, duration, time_unit, name):
 
 
     # get metadata
-    # try:
     rstrm = cfg.redis_instance.xread({f'{res_prefix}:metadata'.encode(): '0-0'.encode()}, block=10000, count=1) 
     print(rstrm)
     metadata = orjson.loads(rstrm[0][1][0][1][b'data'])
     print(f"received download metadata:\n{metadata}")
-
-    # except Exception as e:
-    #     print(e)
-    #     return dash.no_update
 
 
     start = time.time()
 
 
     # get data
-    # wait until stream has been marked as complete
-    # rstrm = cfg.redis_instance.xread(
-    #     {f'board-responses:{board_name}:{req_id}:metadata'.encode(): '0-0'.encode()},
-    #     block=(duration+5)*1000, count=1) 
-
     # poll data status
 
     status = cfg.redis_instance.get(f'{res_prefix}:complete').decode()
@@ -292,7 +285,6 @@ def handle_download_request(n, board, duration, time_unit, name):
 
     # get entire stream
     rstrm_real = cfg.redis_instance.xrange(f'{res_prefix}:real') 
-
     rstrm_imag = cfg.redis_instance.xrange(f'{res_prefix}:imag')
 
     n_points = len(rstrm_real)
@@ -321,7 +313,6 @@ def handle_download_request(n, board, duration, time_unit, name):
     
     # create short data in r/i to test using that to write
     arr_data = np.ones(
-        # (vector_length, num_subchannels), dtype=[("r", np.int16), ("i", np.int16)]
         (vector_length*n_points,), dtype=[("r", np.float), ("i", np.float)]
     )
 

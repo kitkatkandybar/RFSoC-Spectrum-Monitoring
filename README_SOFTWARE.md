@@ -70,6 +70,48 @@ This folder contains Jupter Notebook files written for the RFSoC board for this 
 - **stream.ipynb**
 	- This file contains the Jupyter Notebook for the live streaming feature of the application. When this script is running, at a regular interval, raw data from the board is converted into spectrum data using FFTs, and then dumped into Redis server for the front end to handle.  
 
+## Feature overviews
+
+### Playing back Digital RF Data
+
+This feature involves the Dash front end, the Redis server, as well as the back_end/drf_request_handler.py script. When the user selects a file in the Digital RF request form on the front end, it sends the appropriate requests to the drf_request_handler script through the Redis database. The drf_request_handler is continuously waiting for these requests. Once the drf_request_handler receives a request, it parses the request based on the Redis key and associated values, and responds accordingly. 
+
+Most of the requests from the front end come have the key names "requests:{request id}:{type of request}", and their associated responses have the key name "responses:{request id}:{type of request}", with the same request id for both.
+
+For every request, the front end obtains the request ID by atomically getting the current value in the Redis key 'request-id' and incrementing its value in the database for the next request. 
+
+When a user enters a particular Digital RF path in the request form, the front end sends a request for the channels found within that Digital RF file. It does by publishing a request on the channel 'requests:{req_id}:channels' with file path as the data.  The front end then waits for a response on the stream 'responses:{req_id}:channels'.
+
+Each time a user selects a given channel in the request form, the front end sends a request for the available sample range in the channel file on the redis channel 'requests:{req_id}:samples', and waits for a response on 'responses:{req_id}:samples'. 
+
+Once a user has hit "load data" on the request form, the form should close. The front end sends along the request parameters on the channel 'requests:{req_id}:data'. It waits for the request metadata on 'responses:{req_id}:metadata'. Once the user hits the play button, it begins reading in data for the graph on 'responses:{req_id}:stream' at a regular interval. When this interval fires, the application reads in one data point at a time and outputs it onto the graphs. The application keeps track of the last-displayed data point via a redis key "{session_id}:last-drf-id". Every time the app gets a new data point, it updates this value with the redis ID of this datapoint, so the next time the interval fires it will get the next consecutive data point. The "session_id" value is defined per-user in front_end/app.py. When the user hits the "rewind" button, it sets the "{session_id}:last-drf-id" back to 0.
+
+Most of this functionality is found in front_end/drf_callbacks.py.
+
+
+### Live Streaming Data
+This feature involves the Dash front end, the Redis server, as well as the board/stream.ipynb script, the last of which should be running on the RFSoC board.
+
+The board denotes that it's available for streaming by adding its name to the "active_streams" set in Redis. It dumps its metadata into a Redis set called metadata:{stream_name}. It begins dumping spectrum data into a length-capped Redis stream named "stream:{stream_name}". 
+
+On the front end, to check what boards are available, it checks the values in "active_streams". Once a user hits "play stream data" for a particular stream, the front end gets the metadata from metadata:{stream_name}, and begins reading data from "stream:{stream_name}" at a regular interval. The Dash Interval component called "stream-graph-interval" fires every 200 milliseconds, and when this happens, the front end gets the last datapoint in "stream:{stream_name}" and displays it on the dashboard graphs. This continues until the user hits "pause".  
+
+Most of this functionality is found in front_end/stream_callbacks.py.
+
+### Downloading data
+This feature involves the Dash front end, the Redis server, as well as the board/download.ipynb script, the last of which should be running on the RFSoC board.
+
+The board denotes that it's available for data-downloading by adding its name to the "active_command_boards" set in Redis. It then subscribes to all requests with channel names following the pattern "board-requests:{board_name}:\*" and waits for incoming requests. 
+
+The front end sends a request to the board after a user fills out the download request form. It sends this request and its associated data on the channel board-requests:{board_name}:{req_id}'. Currently, the only parameter it sends it the duration of data to be downloaded.
+
+Once the board gets this request, it records data for the appropriate duration of time and dumps the raw data in Redis. The board dumps the real part of its data in a stream called "board-responses:{board_name}:{req_id}:real", and the imaginary part in "board-responses:{board_name}:{req_id}:imag". It also adds metadta on "board-responses:{board_name}:{req_id}:metadata". When all of th data has been dumped, the board marks the request as complete on the channel "board-responses:{board_name}:{req_id}:complete". 
+
+The front end gets the entire real and imaginary streams, creates a DigitalRF directory from them, zips the directory into a single .zip file, and then has the user's browser download it. 
+
+Most of this functionality is found in front_end/stream_callbacks.py.
+
+
 ## Flow charts
 
 ### front_end/

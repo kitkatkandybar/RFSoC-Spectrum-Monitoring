@@ -157,7 +157,9 @@ if __name__ == '__main__':
 
     # initialize redis instance based on cfg params
     print(f"Connecting to redis server at {cfg_data['redis']['host']}:{cfg_data['redis']['port']}...")
-    r = redis.Redis(host=cfg_data['redis']['host'], port=cfg_data['redis']['port'], db=0)
+    r = redis.Redis(host=cfg_data['redis']['host'], 
+                    port=cfg_data['redis']['port'], 
+                    password=cfg_data['redis']['password'], db=0)
     p = r.pubsub(ignore_subscribe_messages=True)
 
     run_drf_stream()
