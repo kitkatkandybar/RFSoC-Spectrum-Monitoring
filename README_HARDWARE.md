@@ -1,6 +1,6 @@
 # Hardware Overview
 
-As for the hardware, we have not built any hardware. The hardware we have used for this project mainly consists of the RFSoC 2x2 board. In order to receive signals an antenna is also needed. Other RF accessories may be useful but the acquisition of them will strongly depend on the user’s needs.
+We have not built or created any hardware for this project.  The hardware we have used for this project mainly consists of the Xilinx RFSoC 2x2 board. In order to receive signals an antenna is also needed. Other RF accessories may be useful but the acquisition of them will strongly depend on the user’s needs.
 
 ## Schematics
 <img width="452" alt="image" src="https://user-images.githubusercontent.com/72499097/165644857-6c7ba64d-688d-4a66-bba3-f66496dc6bd6.png">
@@ -35,7 +35,7 @@ Below, a list of materials used for this project and its prices is provided (onl
 ## Important data sheets
 For basic information about the hardware components and key futures of the RFSoC board refer to the [Xilinx webpage](https://www.xilinx.com/support/university/boards-portfolio/xup-boards/RFSoC2x2.html#hardware).
 
-For more detailed information about the RFSoC board, including data sheets, board files and more, refer to the [dedicated project webpage](https://www.rfsoc-pynq.io).
+For more detailed information about the RFSoC board, including data sheets, board files and more, refer to the [dedicated webpage](https://www.rfsoc-pynq.io).
 
 We highly recommend using the previous webpage to familiarize with the board, it includes setup instructions, getting-started material, tutorials and much more useful content related to the board.
 
@@ -49,9 +49,9 @@ In our project there are two components that require power:
 
 ## Board setup
 
-Since the RFSoC has two channels (each with one transmitter and one receiver), in this example we are connecting:
-- In channel 0: an antenna to ADC2 (receiver), to monitor the RF spectrum.
-- In channel 1: with an SMA cable, DAC1 (transmitter) and ADC1 (receiver), loopback mode, for testing purposes. It allows us to control exactly what data goes into the receiver, so that we can easily test whether or not the data being displayed on our application is accurate. 
+The RFSoC has two channels, each with one transmitter and one receiver. Our demos had the following setup:
+- In channel 0: An antenna connected to ADC2 (a receiver), to monitor the RF spectrum.
+- In channel 1: Connecting DAC1 (a transmitter) and ADC1 (a receiver) together with an SMA cable in "loopback mode". This is for testing purposes. It allows us to control exactly what data goes into the receiver, so that we can easily test whether the data being displayed on our application is accurate. 
 
 <img width="600" alt="image" src="https://user-images.githubusercontent.com/72499097/165651782-dc2c7033-809b-4d4d-aa2b-1812bb7753b3.png">
 

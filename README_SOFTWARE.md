@@ -148,3 +148,8 @@ This project was tested using the following package versions on PC running Windo
 - scipy                     1.7.1
 
 The Dash application has been tested running on a Windows PC as well as a Mac computer. 
+
+
+## Getting Started
+
+Please refer to README.md for information on how to install the software for this project. 
