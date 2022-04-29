@@ -19,6 +19,11 @@ There are four main components to the application:
 (4) Scripts running on the RFSoC - This is housed under the board/ folder.
 
 
+For information on the software portion of this project, including the setup, installation, and an overview of each module, please read the README_SOFTWARE.md file. 
+
+For information on the hardware portion of this project, please read the README_HARDWARE.md file. 
+
+
 ## Getting started
 
 Install anaconda at https://anaconda.org/
@@ -88,24 +93,20 @@ The front end will read the data from the Redis stream and display it in the Das
 
 
 
-## Current State of the Project
+## Current State of the Project/Known Issues
 
 - At this point in time, this project was developed and tested only handling one user at a time. Being able to process multiple users will likely involve having to restructure certain portions of the codebase. Specifically, the global variables found in front_end/config.py will have to be either cached or stored locally per-user for this application to work for multiple users. [This page](https://dash.plotly.com/sharing-data-between-callbacks) may provide ideas for how to make this work. The most difficult challenge will likely be to restructure the Spectrum and Spectrogram classes (or their corresponding data) to be stored/cached. 
  
-
-
-### Known issues
-
 - The Dash application was developed mostly by one undergraduate student as part of a single course. Please keep that in mind.
 
 - The error handling for this application is not robust. Bugs and errors can and do happen, especially if you misclick or input some invalid values. The best way of dealing with an issue is to refresh the page, or restart any and all of the components involved (the Dash application, the back-end scripts, and so on).
 
 - Sometimes, a Dash callback gets dropped, and as such the action involved does not get completed. This can lead to misaligned graph axes, a data point being missed on the graph, information not being populated, and so on. The fix for this is to just repeat the action again, or to refresh the page if the error is bad enough. We believe this is likely due to Dash throttling callbacks when the rate gets too high, but we are not sure, and have not found a consistent fix. 
 
+- The Redis server currently is running with "protected-mode" off, this should be changed
 
-### Ideas for further improvement
+- The "downloading data" portion of the project is the least well-developed feature. We were unable to find a way to pull large chunks of data from the board at a time. We currently pull data using the method `base.radio.receiver.channel[board_channel].transfer(number_samples)`, with `base` being an instance of the PYNQ `BaseOverlay` class. However, this function only lets you transfer a few tens of thousands of samples at a time, and takes about 200 msec to run, making it a poor candidate for downloading a large chunk of data (eg over 0.5 seconds). A better way of downloading data from the board should be investigated. 
 
+- Sometimes the x-axis value (ie the frequency value) for the live streaming feature is not accurate. We are not exactly sure why. In ./front_end/stream_callbacks.py, in the function update_stream_metadata(), we set the "center frequency" to be 1/4 the sample frequency of the board. This usually results in accurate axis bounds, but not always. 
 
-## More information
-
-For more information on the software component of this project, please read README_SOFTWARE.md. For more information on the hardware component of this project, please read README_HARDWARE.md. 
+- At the moment, downloading data from the board and live streaming board data require two different scripts for the board. This means that only one of these feature can be available at any given time, depending on which script is being run. In the future, it would be good to combine these features into a single script. 

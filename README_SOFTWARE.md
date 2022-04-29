@@ -14,21 +14,18 @@ This folder contains all of the code for python back end of the project. This mo
 - **digital_rf_utils.py**
 	- This file contains functions for reading DigitalRF data and converting it to frequency domain, which is necessary for displaying it on the spectrum graphs in the front end. It was originally modified from drf_plot.py from the DigitalRF library, which can be found [here](https://github.com/MITHaystack/digital_rf/blob/master/python/tools/drf_plot.py).
 
-
-- **drf_back_end.py**
+- **drf_request_handler.py**
 	- This file contains the main entry point for running the back end to the Digital RF playback portion of the application. It contains code which waits for requests from the front end via the Redis server, and responds to them accordingly. It uses ./back_end/digital_rf_utils.py to convert the raw Digital RF data into spectrum data. 
 
-
 - **mock_stream.py**
-	- This file contains code which simulates a live stream coming from a board. It simulates a live stream by reading in data coming from a stored Digital RF file, converts it to the frequency spectrum using ./back_end/digital_rf_utils.py, and outputs it into a Redis stream in a loop.
-
+	- This file contains code which simulates a live stream coming from a board. It exists for testing and debugging purposes.  It simulates a live stream by reading in data coming from a stored Digital RF file, converts it to the frequency spectrum using ./back_end/digital_rf_utils.py, and outputs it into a Redis stream in a loop.
 
 ### ./front_end/
 
 This folder contains all of the code for the Dash-based Web application part of this project.
 
 - **app.py**
-	- This is the main program which runs the Dash application. This file contains code which handles initializing the Dash application, as well as some Dash components and callbacks necessary to the overall layout and function of the application, including the main graphs.
+	- This is the main program which runs the Dash application. This file contains code which handles initializing the Dash application, as well as some Dash components and callbacks necessary to the overall layout and function of the application, including the main graphs. You should run this script to run the Dash application. 
 
 - **config.py**
 	- This file contains global variables which are used across the various front end files. It is a Python convention to name this kind of file "config.py". 
@@ -62,6 +59,17 @@ This folder contains all of the code for the Dash-based Web application part of 
 
 - **stream_components.py**
 	- This file contains Dash components specific to the streaming portion of the web application.
+
+## ./board/
+
+This folder contains Jupter Notebook files written for the RFSoC board for this project.
+
+- **download.ipynb**
+	- This file contains the Jupyter Notebook for the "downloading data" feature of the application. When this script is running, the board waits for a request to come into the Redis server, pulls raw data according to the request, and then dumps the data into the Redis server for the front end to handle. 
+
+- **stream.ipynb**
+	- This file contains the Jupyter Notebook for the live streaming feature of the application. When this script is running, at a regular interval, raw data from the board is converted into spectrum data using FFTs, and then dumped into Redis server for the front end to handle.  
+
 ## Flow charts
 
 ### front_end/
@@ -75,7 +83,7 @@ This folder contains all of the code for the Dash-based Web application part of 
 
 ## Dev/Build information
 
-This project was tested using the following package versions on a Windows PC:
+This project was tested using the following package versions on PC running Windows 11:
 
 - python                    3.9.7
 - dash                      2.0.0      
