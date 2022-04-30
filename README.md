@@ -55,7 +55,7 @@ redis-server redis.conf
 ```
 In case you want to change the password of the redis server, it would need to be changed on all three components of the set up: redis.conf file which sets up the server, /front_end/config.yaml file and in the file which will be executed in the board when creating the redis instance:
 
-r = redis.Redis(host='SERVER_IP', port=6379, db=0, password='NEW_PASSWORD')
+`r = redis.Redis(host='SERVER_IP', port=6379, db=0, password='NEW_PASSWORD')`
 
 ### Board - Streaming data
 
