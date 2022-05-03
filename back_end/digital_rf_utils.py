@@ -133,19 +133,13 @@ def read_digital_rf_data(input_files, plot_file=None, plot_type="spectrum", chan
             else:
                 chidx = chans.index(channel)
 
-            # print(f"chans: {chans}, chidx: {chidx}")
             ustart, ustop = drf.get_bounds(chans[chidx])
             n_total_samples = ustop - ustart
-            # print(f"ustart: {ustart}, ustop: {ustop}")
-
 
             drf_properties = drf.get_properties( chans[chidx])
-            # print(f"drf properties: {drf_properties}")
             sfreq_ld       = drf_properties["samples_per_second"]
             sfreq          = float(sfreq_ld)
             toffset        = start_sample
-
-            # print(f"toffset: {toffset}")
 
             if atime == 0:
                 atime = ustart
@@ -155,7 +149,9 @@ def read_digital_rf_data(input_files, plot_file=None, plot_type="spectrum", chan
             sstart = atime + int(toffset)
             dlen   = stop_sample - start_sample
 
-            # print(f"sstart: {sstart}, dlen: {dlen}, samps per second: {sfreq_ld}")
+            req_start_time = digital_rf.util.sample_to_datetime(sstart, sfreq).timestamp()
+            req_end_time   = digital_rf.util.sample_to_datetime(sstart + dlen, sfreq).timestamp()
+
             metadata_samples = None
             if cfreq is None:
                 # read center frequency from metadata
@@ -164,7 +160,6 @@ def read_digital_rf_data(input_files, plot_file=None, plot_type="spectrum", chan
                     end_sample=sstart + dlen,
                     channel_name=chans[chidx],
                 )
-                # print(f"metadata_samples: {metadata_samples}")
                 # use center frequency of start of data, even if it changes
                 for metadata in metadata_samples.values():
                     try:
@@ -199,11 +194,16 @@ def read_digital_rf_data(input_files, plot_file=None, plot_type="spectrum", chan
             raise
             # sys.exit()
 
-    # print(f"plot_type: {plot_type}")
 
     # 'spectrum' plot type also works for spectrogram data 
     if plot_type == "spectrum":
-        data = { 'metadata': {'cfreq': cfreq, 'sfreq': sfreq, 'channel': chans[chidx]}, 'data': []}
+        data = { 
+            'metadata': {
+                'cfreq': cfreq, 'sfreq': sfreq, 'channel': chans[chidx],
+                'start_time': req_start_time, 'end_time': req_end_time,
+            },
+            'data': [],
+        }
         if metadata_samples:
             data['metadata']['metadata_samples'] = metadata_samples.popitem()[1]
         gen = spectrum_process(

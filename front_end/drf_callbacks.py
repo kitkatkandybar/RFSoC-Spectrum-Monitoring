@@ -1,7 +1,7 @@
 import zipfile
 import time
-import logging
-logger = logging.getLogger(__name__)
+import datetime
+
 
 import dash
 from dash import dcc
@@ -175,6 +175,14 @@ def update_metadeta_output(req_id, tab):
                 html.Tr([
                     html.Th(["Stop Sample:"]), 
                     html.Td(cfg.spec_datas['metadata']['req_params']['stop_sample']),
+                ]),
+                html.Tr([
+                    html.Th(["Start Time:"]), 
+                    html.Td(datetime.datetime.fromtimestamp(cfg.spec_datas['metadata']['start_time'])),
+                ]),
+                html.Tr([
+                    html.Th(["Stop Time:"]), 
+                    html.Td(datetime.datetime.fromtimestamp(cfg.spec_datas['metadata']['end_time'])),
                 ]),
                 html.Tr([
                     html.Th(["Modulus:"]), 
