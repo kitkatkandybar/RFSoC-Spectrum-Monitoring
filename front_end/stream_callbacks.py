@@ -5,9 +5,6 @@ import dash_bootstrap_components as dbc
 import orjson
 import time
 import shutil
-import logging
-logger = logging.getLogger(__name__)
-
 import digital_rf
 
 import os.path
@@ -15,6 +12,12 @@ import numpy as np
 
 import config as cfg
 
+
+###################################################################################################
+#
+#                                  Live Streaming Callbacks
+#
+###################################################################################################
 
 
 @dash.callback(
@@ -24,12 +27,11 @@ import config as cfg
 )
 def get_active_streams(n, tab):
     """
-    get the currently active streams from Redis when the streams tab is clicked
+    gets the list of boards available for live streaming when the streams tab is clicked
     """
-    logging.debug("Getting current active streams")
     if n and tab == 'content-tab-2':
         streams = cfg.redis_instance.smembers("active_streams")
-        logging.debug("Got current active streams: %s", streams)
+        print(f"Got current active streams: {streams}")
         picker_options = [
             {'label': s.decode(), 'value': s.decode()} for s in streams
         ]
@@ -44,10 +46,13 @@ def get_active_streams(n, tab):
     dash.Input({'type': 'stream-picker', 'index': dash.ALL,}, 'value'),
 )
 def update_stream_metadata(stream_names):
+    """
+    Updates the sidebar with metadata from a board live stream
+    """
     if not stream_names[0]:
         return html.P("Metadata will appear here when you pick a stream"),
 
-    logger.debug(f"Getting metadata for {stream_names[0]}")
+    print(f"Getting metadata for {stream_names[0]}")
     metadata = cfg.redis_instance.hgetall(f"metadata:{stream_names[0]}")
 
 
@@ -61,7 +66,7 @@ def update_stream_metadata(stream_names):
     cfg.spec_datas = {}
     cfg.spec_datas['metadata'] = metadata
 
-    logger.debug("Got stream metadata:\n%s", metadata)
+    print("Got stream metadata:\n%s", metadata)
 
     sfreq     = float(metadata['sfreq'])
     n_samples = int(metadata['n_samples'])
@@ -132,13 +137,19 @@ def update_stream_metadata(stream_names):
     prevent_initial_call=True
 )
 def get_next_data(n, stream_name):
+    """
+    Gets the newest point of data in a live stream and set its to be displayed on the dashboard graphs.
+
+    This function gets called at every tick of 'stream-graph-interval'
+    """
     name = stream_name[0]
+
     # TODO: Make sure we don't get duplicates!
     # get newest data point
     rstrm = cfg.redis_instance.xrevrange(f'stream:{name}', count=1) 
 
     if (len(rstrm) == 0):
-        logger.debug("Got no new stream data from %s", f'stream:{name}')
+        print(f"Got no new stream data from stream:{name}")
         raise dash.exceptions.PreventUpdate
 
     d = orjson.loads(rstrm[0][1][b'data'])
@@ -149,10 +160,12 @@ def get_next_data(n, stream_name):
     dash.Input({'type': 'play-stream-data', 'index': dash.ALL,}, 'n_clicks'),
     dash.Input({'type': 'pause-stream-data', 'index': dash.ALL,}, 'n_clicks'),
     dash.Input("content-tabs", 'value'),
-
     prevent_initial_call=True
     )
 def handle_graph_stream_interval(play_n, pause_n, tab):
+    """
+    Handles enabling/disabling the Interval which controls when to fetch live stream data
+    """
     ctx = dash.callback_context
 
     prop_id = ctx.triggered[0]['prop_id'].split('.')[0]
@@ -185,6 +198,13 @@ def handle_disable_pause_stream_button(play_disabled, stream_val):
     return False
 
 
+###################################################################################################
+#
+#                                  Data Download Callbacks
+#
+###################################################################################################
+
+
 @dash.callback(
     dash.Output("download-modal", "is_open"),
     dash.Input("open-download-modal-button", "n_clicks"), 
@@ -205,11 +225,11 @@ def toggle_download_modal(n_open, n_close, n_load, is_open):
 )
 def get_active_download_boards(n, tab):
     """
-    get the currently active streams from Redis when the streams tab is clicked
+    Gets the list of boards available for downloading data from Redis 
     """
     if n and tab == 'content-tab-2':
         boards = cfg.redis_instance.smembers("active_command_boards")
-        logger.debug("Got list of boards from active_command_boards: %s", boards)
+        print("Got list of boards from active_command_boards: {boards}")
 
         picker_options = [
             {'label': s.decode(), 'value': s.decode()} for s in boards
@@ -221,103 +241,44 @@ def get_active_download_boards(n, tab):
     raise dash.exceptions.PreventUpdate
 
 
-@dash.callback(
-    dash.Output('download-board-data', 'data'),
-    dash.Input({'type': 'download-button', 'index': dash.ALL,}, 'n_clicks'),
-    dash.State({'type': 'download-board-picker', 'index': dash.ALL,}, 'value'),
-    dash.State({'type': 'duration-download-input', 'index': dash.ALL,}, 'value'),
-    dash.State({'type': 'download-time-unit-dropdown', 'index': dash.ALL,}, 'value'),
-    dash.State({'type': 'download-name-input', 'index': dash.ALL,}, 'value'),
-)
-def handle_download_request(n, board, duration, time_unit, name):
-    if not n or n[0] < 1:
-        raise dash.exceptions.PreventUpdate
+def write_drf_file(rstrm_real, rstrm_imag, metadata):
+    """
+    Writes raw IQ to a digitalRF file
 
-    if time_unit[0] == 's':
-        dur = duration[0]
-    elif time_unit[0] == "ms":
-        dur = duration[0] / 1e3
-    else: # usec
-        dur = duration[0] / 1e6
-
-
-    board_name = board[0]
-
-
-    req = 
-    {
-        'duration'     : dur
-    }
-
-    req_id = cfg.redis_instance.incr(f'board-request-id:{board_name}')
-
-    res_prefix = f'board-responses:{board_name}:{req_id}'
-
-
-    print(f"DOWNLOAD REQ ID: {req_id} for BOARD NAME: {board_name}")
-    cfg.redis_instance.publish(f'board-requests:{board_name}:{req_id}', orjson.dumps(req))
-
-
-
-    # get metadata
-    rstrm = cfg.redis_instance.xread({f'{res_prefix}:metadata'.encode(): '0-0'.encode()}, block=10000, count=1) 
-    print(rstrm)
-    metadata = orjson.loads(rstrm[0][1][0][1][b'data'])
-    print(f"received download metadata:\n{metadata}")
-
-
-    start = time.time()
-
-
-    # get data
-    # poll data status
-
-    status = cfg.redis_instance.get(f'{res_prefix}:complete').decode()
-    print(f"Got status: {status}")
-    while status == "False":
-        time.sleep(0.5)
-        status = cfg.redis_instance.get(f'{res_prefix}:complete').decode()
-        print(f"Got status: {status}")
-
-
-    print("Status is complete")
-
-
-    # get entire stream
-    rstrm_real = cfg.redis_instance.xrange(f'{res_prefix}:real') 
-    rstrm_imag = cfg.redis_instance.xrange(f'{res_prefix}:imag')
-
+    Note: This was done very last minute. It needs heavy reworking
+    """
     n_points = len(rstrm_real)
     print(f"n points: {n_points}")
 
+    # TODO: this should not be hardcoded
     datadir = os.path.join("C:/Users/yanag/Documents/drf_ex", "drf_ex")
     chdir = os.path.join(datadir, "channel0")
 
     # writing parameters
-    sample_rate_numerator = int(metadata['sfreq'])  # 100 Hz sample rate - typically MUCH faster
+    sample_rate_numerator   = int(metadata['sfreq'])
     sample_rate_denominator = 1
-    sample_rate = np.longdouble(sample_rate_numerator) / sample_rate_denominator
-    dtype_str = "f8"  # short int
-    sub_cadence_secs = (
+    sample_rate             = np.longdouble(sample_rate_numerator) / sample_rate_denominator
+    dtype_str               = "f8"  # short int
+    sub_cadence_secs        = (
         3600  # Number of seconds of data in a subdirectory - typically MUCH larger
     )
     file_cadence_seconds = 1  # Each file will have up to 400 ms of data
     compression_level    = 1  # low level of compression
-    checksum         = False  # no checksum
-    is_complex       = True  # complex values
-    is_continuous    = True
-    num_subchannels  = 1  # only one subchannel
-    marching_periods = False  # no marching periods when writing
-    uuid             = "Fake UUID - use a better one!"
-    vector_length    = metadata['number_samples'] #25000000  # number of samples written for each call - typically MUCH longer
+    checksum             = False  # no checksum
+    is_complex           = True  # complex values
+    is_continuous        = True
+    num_subchannels      = 1  # only one subchannel
+    marching_periods     = False  # no marching periods when writing
+    uuid                 = None # The digitalRF library will generate a UUID for us
+    vector_length        = metadata['number_samples'] # number of samples written for each call - typically MUCH longer
     
     # create short data in r/i to test using that to write
     arr_data = np.ones(
         (vector_length*n_points,), dtype=[("r", np.float), ("i", np.float)]
     )
 
-
     # start 2014-03-09 12:30:30 plus one sample
+    # TODO: get this from the board instead...
     start_global_index = int(np.uint64(18000000 * sample_rate)) + 1
 
     # set up top level directory
@@ -427,17 +388,83 @@ def handle_download_request(n, board, duration, time_unit, name):
     data_dict["uuid_str"] = 'a8012bf59eeb49d6a71fbfdcddf1efbb' #randomly chosen
 
     dmw.write(idx_arr, data_dict)
+
+
+@dash.callback(
+    dash.Output('download-board-data', 'data'),
+    dash.Input({'type': 'download-button', 'index': dash.ALL,}, 'n_clicks'),
+    dash.State({'type': 'download-board-picker', 'index': dash.ALL,}, 'value'),
+    dash.State({'type': 'duration-download-input', 'index': dash.ALL,}, 'value'),
+    dash.State({'type': 'download-time-unit-dropdown', 'index': dash.ALL,}, 'value'),
+    dash.State({'type': 'download-name-input', 'index': dash.ALL,}, 'value'),
+)
+def handle_download_request(n, board, duration, time_unit, name):
+    """
+    Handles a board data request once the user hits submit on the board request form. 
+
+
+    NOTE: This function was put together last minute. It's very sloppy and needs heavy reworking. 
+    """
+    if not n or n[0] < 1:
+        raise dash.exceptions.PreventUpdate
+
+    if time_unit[0] == 's':
+        dur = duration[0]
+    elif time_unit[0] == "ms":
+        dur = duration[0] / 1e3
+    else: # usec
+        dur = duration[0] / 1e6
+
+    board_name = board[0]
+
+    req = {
+        'duration'     : dur
+    }
+
+    req_id = cfg.redis_instance.incr(f'board-request-id:{board_name}')
+
+    res_prefix = f'board-responses:{board_name}:{req_id}'
+
+
+    print(f"DOWNLOAD REQ ID: {req_id} for BOARD NAME: {board_name}")
+    cfg.redis_instance.publish(f'board-requests:{board_name}:{req_id}', orjson.dumps(req))
+
+
+    # get metadata
+    rstrm = cfg.redis_instance.xread({f'{res_prefix}:metadata'.encode(): '0-0'.encode()}, block=10000, count=1) 
+    metadata = orjson.loads(rstrm[0][1][0][1][b'data'])
+    print(f"received download metadata:\n{metadata}")
+
+
+    # get data
+    # poll data status
+    status = cfg.redis_instance.get(f'{res_prefix}:complete').decode()
+    print(f"Got status: {status}")
+    while status == "False":
+        time.sleep(0.5)
+        status = cfg.redis_instance.get(f'{res_prefix}:complete').decode()
+        print(f"Got status: {status}")
+    print("Status is complete")
+
+
+    # get entire stream
+    # TODO: if the data is large, this should likely be broken into multiple steps
+    rstrm_real = cfg.redis_instance.xrange(f'{res_prefix}:real') 
+    rstrm_imag = cfg.redis_instance.xrange(f'{res_prefix}:imag')
+
+    # create the Digital RF file using this data
+    datadir = write_drf_file(rstrm_real, rstrm_imag, metadata)
     print("Done writing")
 
 
+    # Delete the data from Redis
     cfg.redis_instance.delete(f'{res_prefix}:real')
     cfg.redis_instance.delete(f'{res_prefix}:imag')
     cfg.redis_instance.delete(f'{res_prefix}:metadata')
 
-
+    # Zip up the DigitalRF directory and send to the user's browser
     zip_file_name = name[0]
+    # TODO: Delete the zip file from the web server after some amount of time???
     zip_path = shutil.make_archive(zip_file_name, 'zip', datadir)
+
     return dcc.send_file(zip_path)
-
-
-    return 0
