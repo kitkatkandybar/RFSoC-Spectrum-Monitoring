@@ -251,7 +251,7 @@ def write_drf_file(rstrm_real, rstrm_imag, metadata):
     print(f"n points: {n_points}")
 
     # TODO: this should not be hardcoded
-    datadir = os.path.join("C:/Users/yanag/Documents/drf_ex", "drf_ex")
+    datadir = os.path.join(os.path.dirname(__file__), "drf_data")
     chdir = os.path.join(datadir, "channel0")
 
     # writing parameters
@@ -277,9 +277,7 @@ def write_drf_file(rstrm_real, rstrm_imag, metadata):
         (vector_length*n_points,), dtype=[("r", np.float), ("i", np.float)]
     )
 
-    # start 2014-03-09 12:30:30 plus one sample
-    # TODO: get this from the board instead...
-    start_global_index = int(np.uint64(18000000 * sample_rate)) + 1
+    start_global_index = int(np.uint64(metadata['start_time']* sample_rate)) + 1
 
     # set up top level directory
     shutil.rmtree(chdir, ignore_errors=True)
@@ -308,17 +306,13 @@ def write_drf_file(rstrm_real, rstrm_imag, metadata):
     for i in range(n_points):
         arr_data["r"][i*vector_length:i*vector_length+vector_length] = orjson.loads(rstrm_real[i][1][b'data'])
         arr_data["i"][i*vector_length:i*vector_length+vector_length] = orjson.loads(rstrm_imag[i][1][b'data'])
-    result = dwo.rf_write(arr_data)
-
-    
+    result = dwo.rf_write(arr_data)    
 
     # close
     dwo.close()
 
 
-
     #METADATA
-
     #metadata parameters
     file_name = "metadata"
     metadata_dir = os.path.join(chdir, "metadata")
@@ -341,6 +335,8 @@ def write_drf_file(rstrm_real, rstrm_imag, metadata):
     # as the samples index
     idx_arr = np.arange(10, dtype=np.int64) + start_global_index
 
+    # TODO: This may not be the best way of setting the center frequency
+    # but this is the only way we were able to get accurate bounds from the board's data
     data_dict["center_frequencies"] = [metadata['sfreq'] /4 ] #  [metadata['cfreq'] ]
 
 
@@ -353,41 +349,43 @@ def write_drf_file(rstrm_real, rstrm_imag, metadata):
     data_dict["processing"] = sub_dict_processing
 
     #Not real values for receiver, copied them for digital rf we already
-    sub_dict_receiver = {}
-    sub_dict_receiver["antenna"] = 'ADC0' #
-    sub_dict_receiver["bandwidth"] = 100000000.0
-    sub_dict_receiver["center_freq"] = metadata['sfreq'] /4 #metadata['cfreq']
-    sub_dict_receiver["clock_rate"] = 125000000.0
-    sub_dict_receiver["clock_source"] = 'external'
-    sub_dict_receiver["dc_offset"] = False
-    sub_dict_receiver["description"] = 'BU RFSoC'
-    sub_dict_receiver["gain"] = 50.0
-    sub_dict_receiver["id"] = '192.168.20.2'
-    sub_dict_receiver_info= {}
-    sub_dict_receiver_info["mboard_id"] = 'ni-n3xx-316A5C0'
-    sub_dict_receiver_info["mboard_name"] = 'n/a'
-    sub_dict_receiver_info["mboard_serial"] = '316A5C0'
-    sub_dict_receiver_info["rx_antenna"] = 'RX2'
-    sub_dict_receiver_info["rx_id"] = '336'
-    sub_dict_receiver_info["rx_serial"] = '3168E23'
+    sub_dict_receiver                        = {}
+    sub_dict_receiver["antenna"]             = 'ADC0' #
+    sub_dict_receiver["bandwidth"]           = 100000000.0
+    sub_dict_receiver["center_freq"]         = metadata['sfreq'] /4 #metadata['cfreq']
+    sub_dict_receiver["clock_rate"]          = 125000000.0
+    sub_dict_receiver["clock_source"]        = 'external'
+    sub_dict_receiver["dc_offset"]           = False
+    sub_dict_receiver["description"]         = 'BU RFSoC'
+    sub_dict_receiver["gain"]                = 50.0
+    sub_dict_receiver["id"]                  = '192.168.20.2'
+    sub_dict_receiver_info                   = {}
+    sub_dict_receiver_info["mboard_id"]      = 'ni-n3xx-316A5C0'
+    sub_dict_receiver_info["mboard_name"]    = 'n/a'
+    sub_dict_receiver_info["mboard_serial"]  = '316A5C0'
+    sub_dict_receiver_info["rx_antenna"]     = 'RX2'
+    sub_dict_receiver_info["rx_id"]          = '336'
+    sub_dict_receiver_info["rx_serial"]      = '3168E23'
     sub_dict_receiver_info["rx_subdev_name"] = 'Magnesium'
     sub_dict_receiver_info["rx_subdev_spec"] = 'A:0 A:1 B:0 B:1'
-    sub_dict_receiver["info"] = sub_dict_receiver_info
-    sub_dict_receiver["iq_balance"] = ''
-    sub_dict_receiver["lo_export"] = ''
-    sub_dict_receiver["lo_offset"] = 0.0
-    sub_dict_receiver["lo_source"] = ''
-    sub_dict_receiver["otw_format"] = 'sc16' #
-    sub_dict_receiver["stream_args"] = ''
-    sub_dict_receiver["subdev"] = 'B:0'
-    sub_dict_receiver["time_source"] = 'external'
-    data_dict["receiver"] = sub_dict_receiver
+    sub_dict_receiver["info"]                = sub_dict_receiver_info
+    sub_dict_receiver["iq_balance"]          = ''
+    sub_dict_receiver["lo_export"]           = ''
+    sub_dict_receiver["lo_offset"]           = 0.0
+    sub_dict_receiver["lo_source"]           = ''
+    sub_dict_receiver["otw_format"]          = 'sc16' #
+    sub_dict_receiver["stream_args"]         = ''
+    sub_dict_receiver["subdev"]              = 'B:0'
+    sub_dict_receiver["time_source"]         = 'external'
+    data_dict["receiver"]                    = sub_dict_receiver
 
     data_dict["sample_rate_denominator"] = 1
     data_dict["sample_rate_numerator"] = metadata['sfreq']
     data_dict["uuid_str"] = 'a8012bf59eeb49d6a71fbfdcddf1efbb' #randomly chosen
 
     dmw.write(idx_arr, data_dict)
+
+    return datadir
 
 
 @dash.callback(
@@ -429,11 +427,7 @@ def handle_download_request(n, board, duration, time_unit, name):
     print(f"DOWNLOAD REQ ID: {req_id} for BOARD NAME: {board_name}")
     cfg.redis_instance.publish(f'board-requests:{board_name}:{req_id}', orjson.dumps(req))
 
-
-    # get metadata
-    rstrm = cfg.redis_instance.xread({f'{res_prefix}:metadata'.encode(): '0-0'.encode()}, block=10000, count=1) 
-    metadata = orjson.loads(rstrm[0][1][0][1][b'data'])
-    print(f"received download metadata:\n{metadata}")
+    time.sleep(0.3)
 
 
     # get data
@@ -452,6 +446,12 @@ def handle_download_request(n, board, duration, time_unit, name):
     rstrm_real = cfg.redis_instance.xrange(f'{res_prefix}:real') 
     rstrm_imag = cfg.redis_instance.xrange(f'{res_prefix}:imag')
 
+    # get metadata
+    rstrm = cfg.redis_instance.xread({f'{res_prefix}:metadata'.encode(): '0-0'.encode()}, block=10000, count=1) 
+    metadata = orjson.loads(rstrm[0][1][0][1][b'data'])
+    print(f"received download metadata:\n{metadata}")
+
+
     # create the Digital RF file using this data
     datadir = write_drf_file(rstrm_real, rstrm_imag, metadata)
     print("Done writing")
@@ -462,9 +462,14 @@ def handle_download_request(n, board, duration, time_unit, name):
     cfg.redis_instance.delete(f'{res_prefix}:imag')
     cfg.redis_instance.delete(f'{res_prefix}:metadata')
 
+    print("Making zip file...")
+
     # Zip up the DigitalRF directory and send to the user's browser
     zip_file_name = name[0]
     # TODO: Delete the zip file from the web server after some amount of time???
     zip_path = shutil.make_archive(zip_file_name, 'zip', datadir)
+    shutil.rmtree(datadir, ignore_errors=True)
+    
 
+    print("Sending file to user...")
     return dcc.send_file(zip_path)
