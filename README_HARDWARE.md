@@ -16,7 +16,7 @@ From the previous Board Overview, the peripheral that we are using are:
 ## Bill of Materials
 It should be mentioned that the RFSoC 2x2 kit is exclusively for academic customers, the provider of the board is Xilinx. Link to purchase the board [here](https://www.xilinx.com/support/university/boards-portfolio/xup-boards/RFSoC2x2.html#Purchasing_at_academic_price).
 
-Most of the remaining RF components were purchased from Minicircuits. Link to Minicrcuits webpage [here](https://www.minicircuits.com).
+Most of the remaining RF components were purchased from Minicircuits. Link to Minicircuits webpage [here](https://www.minicircuits.com).
 
 Below, a list of materials used for this project and its prices is provided (only the board and an antenna to monitor the RF spectrum is needed for basic monitoring):
 | Item | Quantity | Description | Unit Cost | Extended Cost | 
@@ -74,4 +74,4 @@ The RF components present for this set up are:
 
 Note: In the image, the LNA is not connected to the power supply, it should be connected for the LNA to work on the circuit.
 
-For information about these components visit the [Minicircuits webpage](https://www.minicircuits.com) and search for the specific component (the full name of each component is provided in [Bill of Materials](#Bill-of-Materials)). Datasheets and more detailed information is provided there.
+For information about these components visit the [Minicircuits webpage](https://www.minicircuits.com) and search for the specific component (the full name of each component is provided in [Bill of Materials](#Bill-of-Materials)). Datasheets and more detailed information is provided in their webpage.
