@@ -250,26 +250,23 @@ def write_drf_file(rstrm_real, rstrm_imag, metadata):
     n_points = len(rstrm_real)
     print(f"n points: {n_points}")
 
-    # TODO: this should not be hardcoded
     datadir = os.path.join(os.path.dirname(__file__), "drf_data")
     chdir = os.path.join(datadir, "channel0")
 
     # writing parameters
-    sample_rate_numerator   = int(metadata['sfreq'])
-    sample_rate_denominator = 1
+    sample_rate_numerator   = metadata['sample_rate_numerator']
+    sample_rate_denominator = metadata['sample_rate_denominator']
     sample_rate             = np.longdouble(sample_rate_numerator) / sample_rate_denominator
-    dtype_str               = "f8"  # short int
-    sub_cadence_secs        = (
-        3600  # Number of seconds of data in a subdirectory - typically MUCH larger
-    )
-    file_cadence_seconds = 1  # Each file will have up to 400 ms of data
-    compression_level    = 1  # low level of compression
-    checksum             = False  # no checksum
-    is_complex           = True  # complex values
-    is_continuous        = True
-    num_subchannels      = 1  # only one subchannel
-    marching_periods     = False  # no marching periods when writing
-    uuid                 = None # The digitalRF library will generate a UUID for us
+    dtype_str               = metadata['dtype_str']
+    sub_cadence_secs        = metadata['sub_cadence_secs'] 
+    file_cadence_seconds = metadata['file_cadence_seconds'] 
+    compression_level    = metadata['compression_level'] 
+    checksum             = metadata['checksum'] 
+    is_complex           = metadata['is_complex'] 
+    is_continuous        = metadata['is_continuous'] 
+    num_subchannels      = metadata['num_subchannels'] 
+    marching_periods     = metadata['marching_periods'] 
+    uuid                 = metadata['uuid'] 
     vector_length        = metadata['number_samples'] # number of samples written for each call - typically MUCH longer
     
     # create short data in r/i to test using that to write
@@ -340,48 +337,16 @@ def write_drf_file(rstrm_real, rstrm_imag, metadata):
     data_dict["center_frequencies"] = [metadata['sfreq'] /4 ] #  [metadata['cfreq'] ]
 
 
-    sub_dict_processing = {}
-    sub_dict_processing["channelizer_filter_taps"] = []#array([], dtype=float64)
-    sub_dict_processing["decimation"] = 2
-    sub_dict_processing["interpolation"] = 1
-    sub_dict_processing["resampling_filter_taps"] = [] #array([], dtype=float64)
-    sub_dict_processing["scaling"] = 1.0
+    sub_dict_processing = metadata['processing']
     data_dict["processing"] = sub_dict_processing
 
     #Not real values for receiver, copied them for digital rf we already
-    sub_dict_receiver                        = {}
-    sub_dict_receiver["antenna"]             = 'ADC0' #
-    sub_dict_receiver["bandwidth"]           = 100000000.0
-    sub_dict_receiver["center_freq"]         = metadata['sfreq'] /4 #metadata['cfreq']
-    sub_dict_receiver["clock_rate"]          = 125000000.0
-    sub_dict_receiver["clock_source"]        = 'external'
-    sub_dict_receiver["dc_offset"]           = False
-    sub_dict_receiver["description"]         = 'BU RFSoC'
-    sub_dict_receiver["gain"]                = 50.0
-    sub_dict_receiver["id"]                  = '192.168.20.2'
-    sub_dict_receiver_info                   = {}
-    sub_dict_receiver_info["mboard_id"]      = 'ni-n3xx-316A5C0'
-    sub_dict_receiver_info["mboard_name"]    = 'n/a'
-    sub_dict_receiver_info["mboard_serial"]  = '316A5C0'
-    sub_dict_receiver_info["rx_antenna"]     = 'RX2'
-    sub_dict_receiver_info["rx_id"]          = '336'
-    sub_dict_receiver_info["rx_serial"]      = '3168E23'
-    sub_dict_receiver_info["rx_subdev_name"] = 'Magnesium'
-    sub_dict_receiver_info["rx_subdev_spec"] = 'A:0 A:1 B:0 B:1'
-    sub_dict_receiver["info"]                = sub_dict_receiver_info
-    sub_dict_receiver["iq_balance"]          = ''
-    sub_dict_receiver["lo_export"]           = ''
-    sub_dict_receiver["lo_offset"]           = 0.0
-    sub_dict_receiver["lo_source"]           = ''
-    sub_dict_receiver["otw_format"]          = 'sc16' #
-    sub_dict_receiver["stream_args"]         = ''
-    sub_dict_receiver["subdev"]              = 'B:0'
-    sub_dict_receiver["time_source"]         = 'external'
+    sub_dict_receiver                        = metadata['receiver']
     data_dict["receiver"]                    = sub_dict_receiver
 
-    data_dict["sample_rate_denominator"] = 1
-    data_dict["sample_rate_numerator"] = metadata['sfreq']
-    data_dict["uuid_str"] = 'a8012bf59eeb49d6a71fbfdcddf1efbb' #randomly chosen
+    data_dict["sample_rate_denominator"] = metadata['sample_rate_denominator']
+    data_dict["sample_rate_numerator"] = metadata['sample_rate_numerator']
+    data_dict["uuid_str"] = metadata['uuid_str']
 
     dmw.write(idx_arr, data_dict)
 
@@ -469,7 +434,7 @@ def handle_download_request(n, board, duration, time_unit, name):
     # TODO: Delete the zip file from the web server after some amount of time???
     zip_path = shutil.make_archive(zip_file_name, 'zip', datadir)
     shutil.rmtree(datadir, ignore_errors=True)
-    
+
 
     print("Sending file to user...")
     return dcc.send_file(zip_path)
