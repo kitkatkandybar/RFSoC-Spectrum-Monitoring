@@ -72,18 +72,22 @@ def update_stream_metadata(stream_names):
     n_samples = int(metadata['n_samples'])
     cfreq     = float(metadata['cfreq'])
 
+
+
+    # TODO: Set the decimation factor some other way?
+    decimation_factor =  int(metadata['decimation_factor'])
+    cfg.sa.spectrogram.decimation_factor = decimation_factor
+    cfg.sa.spec.decimation_factor        = decimation_factor
+
+
     cfg.sa.spec.sample_frequency        = sfreq
     cfg.sa.spectrogram.sample_frequency = sfreq
 
-    # TODO: This is likely not the best way to set center frequency for the graphs
-    cfg.sa.spec.centre_frequency        = sfreq/4
-    cfg.sa.spectrogram.centre_frequency = sfreq/4
-    cfg.sa.spec.number_samples          = n_samples
-    cfg.sa.spectrogram.number_samples   = n_samples
+    cfg.sa.spec.centre_frequency        = cfreq
+    cfg.sa.spectrogram.centre_frequency = cfreq
 
-    # TODO: Set the decimation factor some other way?
-    cfg.sa.spectrogram.decimation_factor = 2
-    cfg.sa.spec.decimation_factor        = 2
+    cfg.sa.spec.number_samples          = n_samples
+
 
 
     if sfreq > 1e9:
@@ -118,6 +122,14 @@ def update_stream_metadata(stream_names):
             html.Tr([
                 html.Th(["Center Frequency:"]), 
                 html.Td([cfreq]),
+            ]),
+            html.Tr([
+                html.Th(["Decimation Factor:"]), 
+                html.Td([decimation_factor]),
+            ]),
+            html.Tr([
+                html.Th(["FFT Bins:"]), 
+                html.Td([metadata['fft_size']]),
             ]),
             html.Tr([
                 html.Th(["Channel:"]), 
@@ -392,14 +404,14 @@ def handle_download_request(n, board, duration, time_unit, name):
     print(f"DOWNLOAD REQ ID: {req_id} for BOARD NAME: {board_name}")
     cfg.redis_instance.publish(f'board-requests:{board_name}:{req_id}', orjson.dumps(req))
 
-    time.sleep(0.3)
+    time.sleep(1)
 
 
     # get data
     # poll data status
     status = cfg.redis_instance.get(f'{res_prefix}:complete').decode()
     print(f"Got status: {status}")
-    while status == "False":
+    while status != "True":
         time.sleep(0.5)
         status = cfg.redis_instance.get(f'{res_prefix}:complete').decode()
         print(f"Got status: {status}")

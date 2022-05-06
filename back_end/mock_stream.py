@@ -43,6 +43,8 @@ def run_mock_live_stream(stream_name, file_path):
         'cfreq':     spec_datas['metadata']['cfreq'],
         'channel':   spec_datas['metadata']['channel'],
         'n_samples': spec_datas['data'][0]['data'].shape[0],
+        'fft_size': 1024, 
+        'decimation_factor': 2
     }
 
     print(f"Metdata: {metadata}")
@@ -55,6 +57,7 @@ def run_mock_live_stream(stream_name, file_path):
         while True:
             for i in range(len(spec_datas['data'])):
                 d = spec_datas['data'][i]['data']
+                d = 10.0 * np.log10(d + 1e-12)
                 r.xadd(f'stream:{stream_name}', {'data': json.dumps(d.tolist())}, maxlen=20000)
                 if (i % 10 == 0):
                     print(f"Wrote data with index {i} to redis")

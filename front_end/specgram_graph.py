@@ -338,3 +338,17 @@ class Spectrogram():
 
     def get_plot(self):
         return self._plot
+
+
+    def __str__(self):
+        s = f"y_data: {self.data}\n" + \
+            f"sample_frequency: {self._sample_frequency }\n" + \
+            f"decimation_factor: {self.decimation_factor}\n" + \
+            f"centre_frequency: {self.centre_frequency}\n" + \
+            f"upper limit: {self._upper_limit}\n" + \
+            f"lower limit: {self._lower_limit}\n" + \
+            f"nyquist_stopband: {self.nyquist_stopband}"
+            
+        
+
+        return s

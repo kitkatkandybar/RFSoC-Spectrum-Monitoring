@@ -544,6 +544,7 @@ class Spectrum():
             f"range: {self._range}\n" + \
             f"yrange: {self.yrange}\n" + \
             f"post_process: {self.post_process}\n" + \
-            f"data_windowsize: {self.data_windowsize}\n"
+            f"data_windowsize: {self.data_windowsize}\n" + \
+            f"nyquist_stopband: {self.nyquist_stopband}"
 
         return s

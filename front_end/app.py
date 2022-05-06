@@ -160,10 +160,12 @@ def update_spectrum_graph(
     # Stream data has been updated
     if prop_id == "stream-data": 
         cfg.sa.spec.show_data()
-        cfg.sa.spec.y_autorange = False
+        # cfg.sa.spec.y_autorange = False
         d = np.asarray(stream_data)
-        if log_scale[0] == 'on':
-            d = 10.0 * np.log10(d + 1e-12)
+        # if log_scale[0] == 'on':
+        #     d = 10.0 * np.log10(d + 1e-12)
+        if log_scale[0] == 'off':
+            d = np.power(10, d)
         cfg.sa.spec.data = d
         return cfg.sa.plot
 
@@ -204,7 +206,7 @@ def update_spectrum_graph(
             if cfg.spec_datas:
                 cfg.sa.spec.yrange = (10.0 * np.log10(cfg.spec_datas['metadata']['y_min'] + 1e-12) - 3, 
                                       10.0 * np.log10(cfg.spec_datas['metadata']['y_max'] + 1e-12) + 10)
-                cfg.sa.spec.data   =  10.0 * np.log10(cfg.sa.spec.data + 1e-12)  
+                # cfg.sa.spec.data   =  10.0 * np.log10(cfg.sa.spec.data + 1e-12)  
             
         else:
             cfg.sa.spec.ylabel = "Amplitude" 
@@ -247,9 +249,12 @@ def update_specgram_graph(
     # Stream data has been updated
     if prop_id == "stream-data":
         d = np.asarray(stream_data)
-        if log_scale[0] == 'on':
-            d = 10.0 * np.log10(d + 1e-12)
+        # if log_scale[0] == 'on':
+        #     d = 10.0 * np.log10(d + 1e-12)
+        if log_scale[0] == 'off':
+            d = np.power(10, d)
         cfg.sa.spectrogram.data = d
+        
         return cfg.sa.spectrogram.get_plot()
 
     # Digital RF playback data has been updated
